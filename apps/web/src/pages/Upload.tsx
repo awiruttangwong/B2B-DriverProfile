@@ -552,6 +552,10 @@ export default function Upload() {
                 <Row label="ลูกค้าที่เพิ่มใหม่" value={fmtNum(report.customersCreated)} />
                 <Row label="ประเภทรถที่เพิ่มใหม่" value={fmtNum(report.vehicleTypesCreated)} />
                 <Row label="ทะเบียนรถที่เพิ่มใหม่" value={fmtNum(report.vehiclesCreated)} />
+                <Row
+                  label="พขร. ที่บันทึก/อัปเดตเลขบัญชีธนาคาร"
+                  value={fmtNum(report.driverAccountsSaved)}
+                />
               </tbody>
             </table>
 

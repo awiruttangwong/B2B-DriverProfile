@@ -51,6 +51,12 @@ export interface IngestReport {
   customersCreated: number
   vehicleTypesCreated: number
   revised: RevisedTrip[]
+  /**
+   * จำนวน พขร. ที่บันทึก/อัปเดตเลขบัญชีธนาคาร — เป็น PII เขียนได้เฉพาะ admin/hr
+   * ถ้าผู้ใช้เป็น ops จะเขียนไม่ผ่าน RLS ตัวเลขนี้จึงอาจน้อยกว่าจำนวนที่ไฟล์มีจริง
+   * ดู errors ประกอบถ้าตัวเลขนี้เป็น 0 ทั้งที่ไฟล์มีคอลัมน์เลขบัญชี
+   */
+  driverAccountsSaved: number
   errors: string[]
 }
 
@@ -88,6 +94,7 @@ export async function ingestRows(
     customersCreated: 0,
     vehicleTypesCreated: 0,
     revised: [],
+    driverAccountsSaved: 0,
     errors: [],
   }
 
@@ -156,6 +163,12 @@ export async function ingestRows(
   // -------------------------------------------------------------- พขร.
   say(30, 'จับคู่ตัวตน พขร.')
   const driverIds = await resolveDrivers(unique, report)
+
+  // ------------------------------------------------------ บัญชีธนาคาร พขร.
+  // ทำก่อนเช็คงานซ้ำโดยตั้งใจ — ต้องอัปเดตเลขบัญชีให้ทันแม้ทุกเที่ยวในไฟล์
+  // จะเคยนำเข้าไปแล้วก็ตาม (เช่น อัปโหลดไฟล์เดิมซ้ำหลังบัญชีถูกแก้)
+  say(38, 'บันทึกข้อมูลบัญชีธนาคาร')
+  report.driverAccountsSaved = await saveDriverAccounts(unique, driverIds, report)
 
   // -------------------------------------------------------------- งาน
   say(55, 'ตรวจงานที่นำเข้าไปแล้ว')
@@ -374,7 +387,7 @@ async function findRevisedTrips(
 }
 
 async function fetchExisting(
-  table: 'customers' | 'vehicle_types' | 'vehicles',
+  table: 'customers' | 'vehicle_types' | 'vehicles' | 'banks',
   keyCol: 'code' | 'plate',
   keys: string[],
 ): Promise<{ key: string; id: string }[]> {
@@ -392,11 +405,11 @@ async function fetchExisting(
 }
 
 async function upsertLookup(
-  table: 'customers' | 'vehicle_types',
+  table: 'customers' | 'vehicle_types' | 'banks',
   codes: string[],
   uuidKind: string,
   report: IngestReport,
-  counter: 'customersCreated' | 'vehicleTypesCreated',
+  counter: 'customersCreated' | 'vehicleTypesCreated' | null,
 ): Promise<Map<string, string>> {
   const existing = await fetchExisting(table, 'code', codes)
   const map = new Map<string, string>(existing.map((e) => [e.key, e.id]))
@@ -414,7 +427,7 @@ async function upsertLookup(
     if (error) report.errors.push(`${table}: ${error.message}`)
   }
   for (const r of rows) map.set(r.code, r.id)
-  report[counter] = missing.length
+  if (counter) report[counter] = missing.length
   return map
 }
 
@@ -516,4 +529,49 @@ async function resolveDrivers(
   }
 
   return result
+}
+
+/**
+ * บันทึกเลขบัญชีธนาคารของ พขร. — ข้อมูลนี้ etl_excel.py เคยเก็บให้ตอนโหลดชุดแรก
+ * แต่เส้นทางอัปโหลดผ่านเว็บไม่เคยเขียนตารางนี้เลย ทำให้ พขร. ทุกคนที่เพิ่มผ่านเว็บ
+ * ไม่มีเลขบัญชีติดมาด้วยทั้งที่ไฟล์ต้นทางมีคอลัมน์นี้อยู่
+ *
+ * ถ้า พขร. คนหนึ่งมีบัญชีหลายเลขในไฟล์ (เปลี่ยนธนาคารระหว่างทาง) ใช้แถวที่มี
+ * วันที่ล่าสุดเป็นตัวชี้ขาด ตรงกับตรรกะใน etl_excel.py ทุกประการ
+ *
+ * driver_private เป็น PII เขียนได้เฉพาะ admin/hr (ดู can_see_pii() ในฐานข้อมูล)
+ * ถ้าผู้ใช้เป็น ops การเขียนจะถูก RLS ปฏิเสธ — ปล่อยให้ error ไปโผล่ใน report.errors
+ * แทนที่จะหยุดการนำเข้าทั้งหมด เพราะข้อมูลหลัก (งาน/พขร.) สำคัญกว่าบัญชีธนาคาร
+ */
+async function saveDriverAccounts(
+  rows: CleanRow[],
+  driverIds: Map<string, string>,
+  report: IngestReport,
+): Promise<number> {
+  const bankCodes = [...new Set(rows.map((r) => r.bank).filter(Boolean))] as string[]
+  const bankIds =
+    bankCodes.length > 0 ? await upsertLookup('banks', bankCodes, 'bank', report, null) : new Map<string, string>()
+
+  const latest = new Map<string, CleanRow>()
+  for (const r of rows) {
+    if (!r.accountNo) continue
+    const did = driverIds.get(driverKey(r.driverPhone, r.driverName))
+    if (!did) continue
+    const cur = latest.get(did)
+    if (!cur || r.date > cur.date) latest.set(did, r)
+  }
+  if (latest.size === 0) return 0
+
+  const privateRows = [...latest.entries()].map(([driverId, r]) => ({
+    driver_id: driverId,
+    bank_id: (r.bank && bankIds.get(r.bank)) || null,
+    account_no: r.accountNo,
+    account_name: r.accountName,
+  }))
+
+  for (const part of chunk(privateRows)) {
+    const { error } = await supabase.from('driver_private').upsert(part, { onConflict: 'driver_id' })
+    if (error) report.errors.push(`บัญชีธนาคาร พขร.: ${error.message}`)
+  }
+  return privateRows.length
 }
