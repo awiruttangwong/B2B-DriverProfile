@@ -1,0 +1,17 @@
+Add this to your opencode.json:
+"huggingface": {
+  "npm": "@ai-sdk/openai-compatible",
+  "name": "HuggingFace",
+  "options": {
+    "baseURL": "router.huggingface.co/v1",
+    "apiKey": "{env:HF_TOKEN}"
+  },
+  "models": {
+    "zai-org/GLM-5.2": {
+      "name": "GLM-5.2"
+    },
+    "zai-org/GLM-5.2-FP8": {
+      "name": "GLM-5.2-FP8"
+    }
+  }
+}

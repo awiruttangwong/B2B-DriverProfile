@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    "strict": true,
+    // จำเป็นเพราะพัฒนาบน Windows (ไฟล์ไม่สนตัวพิมพ์) แต่ deploy ขึ้น Linux (สนตัวพิมพ์)
+    // ถ้า import ผิดตัวพิมพ์ จะผ่านบนเครื่องแต่พังตอน build บน CI
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+
+    "types": ["vite/client"],
+
+    // ไม่ต้องมี baseUrl — ตั้งแต่ TypeScript 5.0 paths ถูกแปลงเทียบกับตำแหน่งของ
+    // tsconfig.json เอง และ baseUrl จะเลิกทำงานใน TypeScript 7.0
+    // (ทดสอบแล้วว่า tsc 5.9.3 และ vite resolve "@/..." ได้โดยไม่มี baseUrl)
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src"]
+}

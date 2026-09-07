@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# build
+dist/
+.wrangler/
+
+# env — ห้าม commit เด็ดขาด
+.env
+.env.local
+.env.*.local
+
+# ข้อมูลที่แปลงแล้ว มีชื่อ เบอร์โทร และเลขบัญชีของ พขร. จริง
+data/out/
+
+# ข้อมูลโหมดทดลอง — สร้างจาก data/out/ ด้วย build_demo_data.py จึงมีชื่อและ
+# เบอร์โทรจริงของ พขร. 1,290 คนฝังอยู่เหมือนกัน ห้าม commit ขึ้น repo สาธารณะ
+apps/web/public/demo/
+
+# ไฟล์ต้นฉบับ — มีข้อมูลส่วนบุคคล เก็บไว้นอก git
+*.xlsx
+*.xls
+
+# ระบบ
+.DS_Store
+Thumbs.db

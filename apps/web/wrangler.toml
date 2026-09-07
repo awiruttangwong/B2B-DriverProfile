@@ -1,0 +1,18 @@
+# Deploy หน้าเว็บเป็น static assets บน Cloudflare Workers
+#
+#   npm run build
+#   npx wrangler deploy
+#
+# ค่า VITE_* ถูกฝังเข้าไปใน bundle ตอน build แล้ว จึงไม่ต้องตั้งเป็น secret ที่นี่
+# (ทั้งสองค่าเปิดเผยได้ เพราะสิทธิ์จริงบังคับด้วย RLS)
+#
+# แนะนำให้เปิด Cloudflare Access (Zero Trust) ครอบโดเมนนี้
+# อนุญาตเฉพาะอีเมลโดเมนบริษัท เพื่อไม่ให้คนนอกเห็นแม้แต่หน้าเข้าสู่ระบบ
+
+name = "profile-b2b"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./dist"
+# SPA: ทุก path ที่ไม่ตรงไฟล์จริง ให้ตอบ index.html เพื่อให้ react-router จัดการเอง
+not_found_handling = "single-page-application"
