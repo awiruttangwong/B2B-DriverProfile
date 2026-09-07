@@ -1,19 +1,18 @@
-# Deploy หน้าเว็บเป็น static assets บน Cloudflare Workers
+# Deploy หน้าเว็บขึ้น Cloudflare Pages (โปรเจกต์ 2klogistics-b2b-driverprofile)
 #
+#   npm run deploy
+#
+# หรือแยกขั้นเอง:
 #   npm run build
-#   npx wrangler deploy
+#   npx wrangler pages deploy dist --project-name=2klogistics-b2b-driverprofile
 #
 # ค่า VITE_* ถูกฝังเข้าไปใน bundle ตอน build แล้ว จึงไม่ต้องตั้งเป็น secret ที่นี่
 # (ทั้งสองค่าเปิดเผยได้ เพราะสิทธิ์จริงบังคับด้วย RLS)
 #
+# URL: https://2klogistics-b2b-driverprofile.pages.dev
+# การจัดเส้นทางแบบ SPA อยู่ที่ public/_redirects (คัดลอกเข้า dist/ ตอน build)
+# ไม่ใช่ตรงนี้ — wrangler เวอร์ชันที่ใช้ (3.x) ยังไม่รองรับ pages_build_output_dir
+# ในไฟล์นี้ จึงสั่ง deploy ผ่านคำสั่งข้างบนตรง ๆ แทน
+#
 # แนะนำให้เปิด Cloudflare Access (Zero Trust) ครอบโดเมนนี้
 # อนุญาตเฉพาะอีเมลโดเมนบริษัท เพื่อไม่ให้คนนอกเห็นแม้แต่หน้าเข้าสู่ระบบ
-
-name = "b2b-driverprofile"
-account_id = "6c6387119b50a72218ec37c3618d1972"
-compatibility_date = "2025-09-01"
-
-[assets]
-directory = "./dist"
-# SPA: ทุก path ที่ไม่ตรงไฟล์จริง ให้ตอบ index.html เพื่อให้ react-router จัดการเอง
-not_found_handling = "single-page-application"

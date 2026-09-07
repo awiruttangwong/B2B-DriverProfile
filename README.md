@@ -130,11 +130,22 @@ npm run dev
 
 ### 6. Deploy ขึ้น Cloudflare
 
+Host เป็น Cloudflare Pages (ไม่ได้จดโดเมนเอง ใช้ `*.pages.dev` ฟรี) —
+โปรเจกต์จริงคือ `2klogistics-b2b-driverprofile`
+
 ```bash
 cd apps/web
-npm run build
-npx wrangler deploy
+npm run deploy    # = npm run build && wrangler pages deploy dist --project-name=...
 ```
+
+URL: <https://2klogistics-b2b-driverprofile.pages.dev>
+
+> **ข้อควรระวังตอนตั้งโปรเจกต์ใหม่บนเครื่องอื่น** — ห้ามใส่ข้อมูลโหมดทดลอง
+> (`demo-data/` ที่รากของ repo) ไว้ใน `apps/web/public/` เด็ดขาด Vite คัดลอก
+> ทุกอย่างใน `public/` ลง `dist/` แบบไม่สนใจ `.gitignore` เคยเกิดเหตุจริงมาแล้ว
+> ที่ข้อมูลชื่อ+เบอร์โทรของ พขร. หลุดขึ้น deploy แบบเปิดให้ดึงได้โดยไม่ต้อง
+> ยืนยันตัวตนอยู่ไม่กี่นาทีก่อนแก้ทัน — ตอนนี้ป้องกันไว้ในระดับโครงสร้างแล้ว
+> (ดูคอมเมนต์ใน `apps/web/vite.config.ts`)
 
 แนะนำเปิด **Cloudflare Access** ครอบโดเมน อนุญาตเฉพาะอีเมลโดเมนบริษัท
 เพื่อไม่ให้คนนอกเห็นแม้แต่หน้าเข้าสู่ระบบ

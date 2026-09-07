@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "build:demo": "vite build --mode demo",
     "typecheck": "tsc --noEmit",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=2klogistics-b2b-driverprofile",
     "gen:types": "supabase gen types typescript --linked > src/types/database.ts"
   },
   "dependencies": {
