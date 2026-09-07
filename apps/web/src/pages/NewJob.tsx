@@ -160,6 +160,9 @@ export default function NewJob() {
         void qc.invalidateQueries({ queryKey: ['pending'] })
         void qc.invalidateQueries({ queryKey: ['pending-count'] })
         void qc.invalidateQueries({ queryKey: ['driver-kpis'] })
+        // ไม่ทำแบบนี้จะโชว์ "ยังไม่มีเบอร์นี้ในระบบ" ค้างไปพักหนึ่งหลังเพิ่งสร้าง
+        // พขร. ใหม่ เพราะแคชของเช็คก่อนหน้า (ตอนที่ยังไม่มี) ยังไม่หมดอายุ
+        void qc.invalidateQueries({ queryKey: ['driver-by-phone'] })
       }
     } catch (err) {
       setMsg({ kind: 'err', text: err instanceof Error ? err.message : String(err) })
