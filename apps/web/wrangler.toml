@@ -9,7 +9,8 @@
 # แนะนำให้เปิด Cloudflare Access (Zero Trust) ครอบโดเมนนี้
 # อนุญาตเฉพาะอีเมลโดเมนบริษัท เพื่อไม่ให้คนนอกเห็นแม้แต่หน้าเข้าสู่ระบบ
 
-name = "profile-b2b"
+name = "b2b-driverprofile"
+account_id = "6c6387119b50a72218ec37c3618d1972"
 compatibility_date = "2025-09-01"
 
 [assets]
