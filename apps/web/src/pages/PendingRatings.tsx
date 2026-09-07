@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { PendingRatingRow } from '../types/database'
-import { fmtDate, fmtNum, fmtPhone } from '../lib/format'
+import { fmtDate, fmtNum, fmtPhone, localISODate } from '../lib/format'
 import RatingDialog from '../components/RatingDialog'
 
 const PAGE = 40
@@ -19,7 +19,7 @@ export default function PendingRatings() {
     queryFn: async () => {
       const since = new Date()
       since.setDate(since.getDate() - days)
-      const sinceIso = since.toISOString().slice(0, 10)
+      const sinceIso = localISODate(since)
 
       const { data, error, count } = await supabase
         .from('pending_ratings')

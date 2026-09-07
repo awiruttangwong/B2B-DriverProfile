@@ -1,16 +1,153 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow } from '../types/database'
-import { fmtCostTotal, fmtNum, fmtPhone, fmtSince, STATUS_LABEL } from '../lib/format'
+import { fmtNum, fmtPhone, fmtSince, STATUS_LABEL } from '../lib/format'
 import ScoreCell from '../components/ScoreCell'
 import ReadinessPanel from '../components/ReadinessPanel'
+import StatusDialog from '../components/StatusDialog'
 import { IconSearch, IconUsers } from '../components/icons'
 
 type SortKey = 'total_jobs' | 'customer_count' | 'adjusted_score' | 'last_job_date' | 'full_name'
 
 const PAGE_SIZE = 50
+
+interface DriverSuggestion {
+  id: string
+  full_name: string
+  phone: string | null
+  driver_code: string
+  status: string
+}
+
+/**
+ * ช่องค้นหาพร้อมคำแนะนำ — พิมพ์แล้วกรองตารางด้านล่างตามปกติเหมือนเดิม
+ * แต่ถ้าเจอคนที่ใช่แล้วในลิสต์แนะนำ คลิกได้เลยเพื่อกระโดดตรงไปหน้าโปรไฟล์คนนั้น
+ * ไม่ต้องรอกรองตารางแล้วไล่หาอีกที
+ */
+function DriverSearchField({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string
+  onChange: (v: string) => void
+  suggestions: DriverSuggestion[]
+}) {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const q = value.trim().toLowerCase()
+  const filtered = q
+    ? suggestions
+        .filter(
+          (s) =>
+            s.full_name.toLowerCase().includes(q) ||
+            (s.phone ?? '').includes(q) ||
+            s.driver_code.toLowerCase().includes(q),
+        )
+        .slice(0, 8)
+    : []
+
+  return (
+    <div className={`search-field${value ? ' has-clear' : ''}`} ref={wrapRef}>
+      <span
+        style={{
+          position: 'absolute',
+          left: 11,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--muted)',
+          display: 'flex',
+        }}
+      >
+        <IconSearch size={16} />
+      </span>
+      <input
+        id="q"
+        ref={inputRef}
+        type="search"
+        autoComplete="off"
+        placeholder="ชื่อ พขร. / เบอร์โทร / DRV-00123"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false)
+        }}
+        style={{ paddingLeft: 34 }}
+      />
+      {value && (
+        <button
+          type="button"
+          className="combo-clear"
+          tabIndex={-1}
+          aria-label="ล้างคำค้นหา"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onChange('')
+            inputRef.current?.focus()
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+      {open && filtered.length > 0 && (
+        <ul className="combo-list" role="listbox">
+          {filtered.map((s) => (
+            <li
+              key={s.id}
+              role="option"
+              aria-selected={false}
+              className="combo-item"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setOpen(false)
+                navigate(`/drivers/${s.id}`)
+              }}
+            >
+              <span className="combo-label">
+                {s.full_name}
+                <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>
+                  {s.driver_code}
+                </span>
+              </span>
+              <span className="combo-hint">{fmtPhone(s.phone)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 /** หน่วงการค้นหา ไม่ยิงคำสั่งใหม่ทุกตัวอักษรที่พิมพ์ */
 function useDebounced<T>(value: T, ms = 300): T {
@@ -23,12 +160,14 @@ function useDebounced<T>(value: T, ms = 300): T {
 }
 
 export default function Drivers() {
+  const { can } = useAuth()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('active')
   const [minJobs, setMinJobs] = useState(0)
   const [sort, setSort] = useState<SortKey>('total_jobs')
   const [asc, setAsc] = useState(false)
   const [page, setPage] = useState(0)
+  const [statusFor, setStatusFor] = useState<DriverDirectoryRow | null>(null)
 
   const dq = useDebounced(q)
 
@@ -84,6 +223,22 @@ export default function Drivers() {
     },
   })
 
+  // รายชื่อทั้งหมดแบบบาง ๆ ไว้กรองฝั่งเครื่องสำหรับคำแนะนำตอนพิมพ์ค้นหา
+  // ไม่ผูกกับตัวกรองสถานะ/จำนวนเที่ยว เพราะเป็นแค่ทางลัดกระโดดไปหน้าโปรไฟล์ ไม่ใช่ผลลัพธ์ตาราง
+  const suggestPool = useQuery({
+    queryKey: ['driver-suggest-pool'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('driver_directory')
+        .select('id, full_name, phone, driver_code, status')
+        .order('full_name')
+        .range(0, 1999)
+      if (error) throw error
+      return (data ?? []) as DriverSuggestion[]
+    },
+  })
+
   const rows = data?.rows ?? []
   const total = data?.count ?? 0
   const pages = Math.ceil(total / PAGE_SIZE)
@@ -96,11 +251,11 @@ export default function Drivers() {
     }
   }
 
-  function Th({ k, children, right }: { k: SortKey; children: string; right?: boolean }) {
+  function Th({ k, children }: { k: SortKey; children: string }) {
     const on = sort === k
     return (
       <th
-        className={`sortable${right ? ' right' : ''}`}
+        className="sortable"
         aria-sort={on ? (asc ? 'ascending' : 'descending') : undefined}
         onClick={() => toggleSort(k)}
         tabIndex={0}
@@ -142,31 +297,10 @@ export default function Drivers() {
 
       {/* ---------------------------------------------- ตัวกรอง */}
       <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <div className="row" style={{ gap: 12, alignItems: 'flex-end' }}>
+        <div className="filters-row">
           <div style={{ flex: '2 1 260px' }}>
             <label htmlFor="q">ค้นหา</label>
-            <div style={{ position: 'relative' }}>
-              <span
-                style={{
-                  position: 'absolute',
-                  left: 11,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)',
-                  display: 'flex',
-                }}
-              >
-                <IconSearch size={16} />
-              </span>
-              <input
-                id="q"
-                type="search"
-                placeholder="ชื่อ พขร. / เบอร์โทร / DRV-00123"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                style={{ paddingLeft: 34 }}
-              />
-            </div>
+            <DriverSearchField value={q} onChange={setQ} suggestions={suggestPool.data ?? []} />
           </div>
           <div style={{ flex: '1 1 130px' }}>
             <label htmlFor="st">สถานะ</label>
@@ -198,20 +332,15 @@ export default function Drivers() {
 
       {error && <div className="note-box err">โหลดข้อมูลไม่สำเร็จ: {(error as Error).message}</div>}
 
-      <div className="tablewrap">
+      <div className="tablewrap drivers-table">
         <table>
           <thead>
             <tr>
               <Th k="full_name">พขร.</Th>
               <th>เบอร์โทร</th>
-              <Th k="total_jobs" right>
-                เที่ยว
-              </Th>
-              <Th k="customer_count" right>
-                ลูกค้า
-              </Th>
+              <Th k="total_jobs">เที่ยว</Th>
+              <Th k="customer_count">ลูกค้า</Th>
               <Th k="adjusted_score">คะแนน</Th>
-              <th className="right">ค่าจ้างสะสม</th>
               <Th k="last_job_date">งานล่าสุด</Th>
               <th>สถานะ</th>
             </tr>
@@ -220,7 +349,7 @@ export default function Drivers() {
             {isLoading &&
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: 7 }).map((__, j) => (
                     <td key={j}>
                       <div className="sk" style={{ width: j === 0 ? '70%' : '50%' }} />
                     </td>
@@ -230,7 +359,7 @@ export default function Drivers() {
 
             {!isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <div className="empty">
                     <span className="e-icon">
                       <IconUsers size={22} />
@@ -268,23 +397,35 @@ export default function Drivers() {
                     </div>
                   </td>
                   <td className="mono nowrap">{fmtPhone(d.phone)}</td>
-                  <td className="right num">{fmtNum(d.total_jobs)}</td>
-                  <td className="right num">{fmtNum(d.customer_count)}</td>
+                  <td className="num">{fmtNum(d.total_jobs)}</td>
+                  <td className="num">{fmtNum(d.customer_count)}</td>
                   <td>
                     <ScoreCell score={d.adjusted_score} count={d.rating_count} />
                   </td>
-                  <td className="right num">{fmtCostTotal(d.total_cost, d.total_jobs)}</td>
                   <td className="nowrap muted" style={{ fontSize: 13 }}>
                     {fmtSince(d.days_since_last_job)}
                   </td>
                   <td>
-                    <span
-                      className={`badge ${
-                        d.status === 'active' ? 'ok' : d.status === 'blacklisted' ? 'bad' : 'warn'
-                      }`}
-                    >
-                      {STATUS_LABEL[d.status] ?? d.status}
-                    </span>
+                    {can('admin', 'hr', 'ops') ? (
+                      <button
+                        type="button"
+                        className={`badge badge-btn ${
+                          d.status === 'active' ? 'ok' : d.status === 'blacklisted' ? 'bad' : 'warn'
+                        }`}
+                        onClick={() => setStatusFor(d)}
+                        title="เปลี่ยนสถานะการรับงาน"
+                      >
+                        {STATUS_LABEL[d.status] ?? d.status}
+                      </button>
+                    ) : (
+                      <span
+                        className={`badge ${
+                          d.status === 'active' ? 'ok' : d.status === 'blacklisted' ? 'bad' : 'warn'
+                        }`}
+                      >
+                        {STATUS_LABEL[d.status] ?? d.status}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -312,6 +453,16 @@ export default function Drivers() {
           </div>
         )}
       </div>
+
+      {statusFor && (
+        <StatusDialog
+          driverId={statusFor.id}
+          driverName={statusFor.full_name}
+          current={statusFor.status}
+          currentReason={statusFor.status_reason}
+          onClose={() => setStatusFor(null)}
+        />
+      )}
     </main>
   )
 }

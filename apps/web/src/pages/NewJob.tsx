@@ -6,11 +6,11 @@ import { useAuth } from '../lib/auth'
 import { cleanManualRow, ingestRows, type RawRow } from '../lib/ingest'
 import { normPhone, normText, splitRoute } from '../lib/normalize'
 import type { Customer, DriverDirectoryRow, VehicleType } from '../types/database'
-import { fmtMoney, fmtNum } from '../lib/format'
+import { fmtMoney, fmtNum, localISODate } from '../lib/format'
 import Combobox, { type ComboOption } from '../components/Combobox'
 
 const EMPTY = {
-  date: new Date().toISOString().slice(0, 10),
+  date: localISODate(),
   customer: '',
   vehicleType: '',
   plate: '',

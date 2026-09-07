@@ -381,6 +381,26 @@ async function searchDrivers(p: {
   return { data: rows, error: null }
 }
 
+// ----------------------------------------------------- คำแนะนำเส้นทาง
+
+async function searchRoutes(p: { p_limit?: number }): Promise<Result<Row[]>> {
+  const hist = await loadTable('driver_job_history')
+
+  const counts = new Map<string, number>()
+  for (const h of hist) {
+    const route = String(h.route_raw ?? '').trim()
+    if (!route) continue
+    counts.set(route, (counts.get(route) ?? 0) + 1)
+  }
+
+  const rows = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, p.p_limit ?? 500)
+    .map(([route_raw, job_count]) => ({ route_raw, job_count }))
+
+  return { data: rows, error: null }
+}
+
 // ------------------------------------------------------------ auth ปลอม
 
 const DEMO_USER = {
@@ -406,7 +426,9 @@ export const demoClient = {
   rpc: (fn: string, params: Record<string, unknown>) =>
     fn === 'search_drivers'
       ? searchDrivers(params)
-      : Promise.resolve({ data: [], error: { message: `demo ไม่รองรับ rpc ${fn}` } }),
+      : fn === 'search_routes'
+        ? searchRoutes(params)
+        : Promise.resolve({ data: [], error: { message: `demo ไม่รองรับ rpc ${fn}` } }),
   auth: {
     getSession: async () => ({ data: { session: DEMO_SESSION }, error: null }),
     onAuthStateChange: () => ({

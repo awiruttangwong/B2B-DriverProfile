@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IconMoon, IconSun } from './icons'
 
 type Theme = 'system' | 'light' | 'dark'
 const KEY = 'pb2b-theme'
@@ -10,6 +11,14 @@ function read(): Theme {
     return v === 'light' || v === 'dark' ? v : 'system'
   } catch {
     return 'system'
+  }
+}
+
+function systemPrefersDark(): boolean {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  } catch {
+    return false
   }
 }
 
@@ -32,46 +41,29 @@ export default function ThemeToggle() {
     }
   }, [theme])
 
-  const opts: { v: Theme; label: string }[] = [
-    { v: 'light', label: 'สว่าง' },
-    { v: 'dark', label: 'มืด' },
-    { v: 'system', label: 'ระบบ' },
+  // ตัวเลือกเหลือแค่สว่าง/มืด แต่ยังไม่บังคับผู้ใช้ที่ไม่เคยกดเลือก — ครั้งแรกยึดตาม
+  // ธีมของระบบปฏิบัติการไปก่อน (ผ่าน 'system' เดิม) แค่ไม่มีปุ่มแยกให้กดเลือกอีก
+  const resolved: 'light' | 'dark' = theme === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : theme
+
+  const opts: { v: 'light' | 'dark'; label: string; icon: typeof IconSun }[] = [
+    { v: 'light', label: 'สว่าง', icon: IconSun },
+    { v: 'dark', label: 'มืด', icon: IconMoon },
   ]
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="ธีมสี"
-      style={{
-        display: 'flex',
-        gap: 2,
-        background: 'var(--surface-2)',
-        borderRadius: 'var(--r-pill)',
-        padding: 3,
-      }}
-    >
+    <div role="radiogroup" aria-label="ธีมสี" className="theme-toggle">
       {opts.map((o) => {
-        const on = theme === o.v
+        const on = resolved === o.v
+        const Icon = o.icon
         return (
           <button
             key={o.v}
             role="radio"
             aria-checked={on}
+            className={on ? 'on' : ''}
             onClick={() => setTheme(o.v)}
-            style={{
-              flex: 1,
-              border: 0,
-              cursor: 'pointer',
-              borderRadius: 'var(--r-pill)',
-              padding: '4px 6px',
-              fontSize: 11.5,
-              whiteSpace: 'nowrap',
-              fontWeight: on ? 500 : 400,
-              background: on ? 'var(--surface)' : 'transparent',
-              color: on ? 'var(--brand-strong)' : 'var(--muted)',
-              boxShadow: on ? 'var(--shadow-sm)' : 'none',
-            }}
           >
+            <Icon size={13} />
             {o.label}
           </button>
         )

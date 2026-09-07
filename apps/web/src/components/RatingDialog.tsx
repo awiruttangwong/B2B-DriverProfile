@@ -104,6 +104,8 @@ export default function RatingDialog({
       void qc.invalidateQueries({ queryKey: ['driver'] })
       void qc.invalidateQueries({ queryKey: ['drivers'] })
       void qc.invalidateQueries({ queryKey: ['pending'] })
+      // ไม่ทำแบบนี้ตัวเลขค้างบนเมนู "รอให้คะแนน" จะไม่ลดจนกว่าแคชจะหมดอายุเอง (2 นาที)
+      void qc.invalidateQueries({ queryKey: ['pending-count'] })
       onClose()
     },
     onError: (e: Error) => setErr(translate(e.message)),
@@ -126,7 +128,7 @@ export default function RatingDialog({
               </div>
             )}
           </div>
-          <button className="btn btn-sm" onClick={onClose}>
+          <button className="btn btn-sm btn-cancel" onClick={onClose}>
             ปิด
           </button>
         </div>
@@ -230,7 +232,7 @@ export default function RatingDialog({
           )}
 
           <div className="row" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn" onClick={onClose}>
+            <button className="btn btn-cancel" onClick={onClose}>
               ยกเลิก
             </button>
             <button

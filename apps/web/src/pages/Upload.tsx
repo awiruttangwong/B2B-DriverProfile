@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { useAuth } from '../lib/auth'
 import {
   cleanSheets,
@@ -17,7 +17,9 @@ import {
   type Field,
   type SheetScan,
 } from '../lib/sourceProfiles'
+import { downloadJobTemplate } from '../lib/template'
 import { fmtDateShort, fmtMoney, fmtNum } from '../lib/format'
+import { IconDownload, IconFile, IconUpload } from '../components/icons'
 
 type Stage = 'idle' | 'reading' | 'preview' | 'importing' | 'done'
 
@@ -47,13 +49,38 @@ export default function Upload() {
   const [report, setReport] = useState<IngestReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [templateBusy, setTemplateBusy] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const allowed = can('admin', 'hr', 'ops')
 
-  async function onPick(e: ChangeEvent<HTMLInputElement>) {
+  function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (file) void handleFile(file)
+    e.target.value = ''
+  }
 
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    setDragOver(false)
+    if (!allowed || stage === 'reading') return
+    const file = e.dataTransfer.files?.[0]
+    if (file) void handleFile(file)
+  }
+
+  async function handleTemplateDownload() {
+    setTemplateBusy(true)
+    try {
+      await downloadJobTemplate()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setTemplateBusy(false)
+    }
+  }
+
+  async function handleFile(file: File) {
     setStage('reading')
     setError(null)
     setReport(null)
@@ -105,8 +132,6 @@ export default function Upload() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setStage('idle')
-    } finally {
-      e.target.value = ''
     }
   }
 
@@ -201,21 +226,76 @@ export default function Upload() {
 
       {/* -------------------------------------------------- เลือกไฟล์ */}
       {(stage === 'idle' || stage === 'reading') && (
-        <div className="card card-pad">
-          <label htmlFor="file">เลือกไฟล์ .xlsx หรือ .xls</label>
-          <input
-            id="file"
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            disabled={!allowed || stage === 'reading'}
-            onChange={(e) => void onPick(e)}
-            style={{ padding: 8 }}
-          />
-          {stage === 'reading' && (
-            <p className="hint">
-              <span className="spinner" /> กำลังอ่านและสแกนทุกชีต…
-            </p>
-          )}
+        <>
+          <div className="card card-pad template-cta">
+            <div className="template-cta-icon">
+              <IconFile size={20} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b>ยังไม่มีไฟล์ข้อมูล?</b>
+              <p className="muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
+                ดาวน์โหลดเทมเพลตไปกรอกได้เลย หัวตารางตรงกับที่ระบบรู้จักอยู่แล้ว
+                ไม่ต้องกังวลเรื่องจับคู่คอลัมน์ผิด
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-download"
+              disabled={templateBusy}
+              onClick={() => void handleTemplateDownload()}
+            >
+              <IconDownload size={15} />
+              {templateBusy ? 'กำลังสร้างไฟล์…' : 'ดาวน์โหลดเทมเพลต'}
+            </button>
+          </div>
+
+          <div
+            className={`dropzone${dragOver ? ' dragover' : ''}${!allowed ? ' disabled' : ''}`}
+            role="button"
+            tabIndex={allowed ? 0 : -1}
+            aria-disabled={!allowed || stage === 'reading'}
+            onClick={() => allowed && stage !== 'reading' && fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && allowed && stage !== 'reading') {
+                e.preventDefault()
+                fileInputRef.current?.click()
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (allowed && stage !== 'reading') setDragOver(true)
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+          >
+            <input
+              id="file"
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              disabled={!allowed || stage === 'reading'}
+              onChange={onPick}
+              hidden
+            />
+
+            {stage === 'reading' ? (
+              <>
+                <span className="spinner" style={{ width: 30, height: 30, marginBottom: 10 }} />
+                <b>กำลังอ่านและสแกนทุกชีต…</b>
+              </>
+            ) : (
+              <>
+                <span className="dropzone-icon">
+                  <IconUpload size={22} />
+                </span>
+                <b>ลากไฟล์มาวางตรงนี้ หรือคลิกเพื่อเลือกไฟล์</b>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  รองรับ .xlsx, .xls, .csv — ทั้งแบบ ALLMANUAL, EXPRESS และ MASTER
+                </span>
+              </>
+            )}
+          </div>
+
           <div className="note-box" style={{ marginTop: 16 }}>
             <strong>ต้องมีอย่างน้อย</strong> —{' '}
             {REQUIRED_FIELDS.map((f) => FIELD_LABEL[f]).join(' · ')}
@@ -224,7 +304,7 @@ export default function Upload() {
             ราคาจ่าย/ค่าเที่ยว พขร. · เส้นทาง (Route)/เส้นทาง / ดรอป / จำนวนลัง ·
             ชื่อพขร/ชื่อ พขร.
           </div>
-        </div>
+        </>
       )}
 
       {/* -------------------------------------------------- เลือกชีต + ตรวจ */}

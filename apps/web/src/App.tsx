@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './lib/auth'
 import { IS_DEMO, supabase } from './lib/supabase'
 import { ROLE_LABEL, fmtNum } from './lib/format'
-import { IconStar, IconTarget, IconTruck, IconUpload, IconUsers } from './components/icons'
+import { IconLogout, IconStar, IconTarget, IconTruck, IconUpload, IconUsers } from './components/icons'
 import ThemeToggle from './components/ThemeToggle'
 import Login from './pages/Login'
 import Drivers from './pages/Drivers'
@@ -13,6 +13,30 @@ import FindDriver from './pages/FindDriver'
 import PendingRatings from './pages/PendingRatings'
 import Upload from './pages/Upload'
 import NewJob from './pages/NewJob'
+
+/** อักษรย่อสำหรับ avatar กลม — เอาตัวแรกของคำแรกกับคำที่สอง ถ้ามีคำเดียวก็ตัด 2 ตัวแรก */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+}
+
+/**
+ * ย่อขนาดตัวอักษรชื่อ/อีเมลอัตโนมัติตามความยาว แทนการตัดด้วย ... เพราะบางบัญชี
+ * ใช้อีเมลยาว (เช่น 2kl.transport0013@gmail.com) ต้องเห็นอีเมลเต็มเพื่อยืนยันว่า
+ * เข้าระบบด้วยบัญชีที่ถูกต้อง
+ *
+ * ตัวเลขช่วงตัดวัดจากความกว้างจริงของคอลัมน์ในไซด์บาร์ (ไม่ใช่กะเอง — เคยกะแล้วพลาด
+ * เพราะ .user-info มี flex-grow: 0 บีบพื้นที่จริงเหลือ ~137px ไม่ใช่ ~164px ที่คำนวณผิดตอนแรก)
+ * แล้วทดสอบย้อนกลับกับอีเมลจริงทั้ง 7 บัญชี เผื่อระยะขอบไว้อย่างน้อย ~0.8px ทุกกรณี
+ */
+function fitFontSize(text: string): number {
+  const len = text.length
+  if (len <= 17) return 13
+  if (len <= 20) return 11
+  return 9
+}
 
 function Tab({ to, icon, children, count }: { to: string; icon: ReactNode; children: ReactNode; count?: number }) {
   return (
@@ -77,6 +101,8 @@ function Shell() {
 
   if (!session) return <Login />
 
+  const displayName = profile?.full_name ?? session.user.email ?? '?'
+
   return (
     <div className="app">
       {IS_DEMO && (
@@ -89,39 +115,42 @@ function Shell() {
       <div className="shell">
         <aside className="sidebar">
           <div className="brand-mark">
-            <span className="logo" aria-hidden="true">
-              2K
-            </span>
+            <img className="logo" src="/logo-sidebar.png" alt="" aria-hidden="true" />
             <span className="txt">
-              <b>พขร. Profile</b>
-              <span>2K Logistics</span>
+              <b>
+                <span className="accent">2K</span> Driver Profile
+              </b>
             </span>
           </div>
 
           <NavLinks />
 
           <div className="sidebar-foot">
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 14 }}>
               <ThemeToggle />
             </div>
-            <b>{profile?.full_name ?? session.user.email}</b>
-            {profile ? ROLE_LABEL[profile.role] ?? profile.role : ''}
-            <button
-              className="btn btn-sm"
-              style={{ marginTop: 10, width: '100%', justifyContent: 'center' }}
-              onClick={() => void signOut()}
-            >
-              ออกจากระบบ
-            </button>
+            <div className="account-card">
+              <div className="user-card">
+                <span className="user-avatar" aria-hidden="true">
+                  {initials(displayName)}
+                </span>
+                <span className="user-info">
+                  <b style={{ fontSize: fitFontSize(displayName) }}>{displayName}</b>
+                  {profile && <span className="badge brand">{ROLE_LABEL[profile.role] ?? profile.role}</span>}
+                </span>
+              </div>
+              <button className="signout" onClick={() => void signOut()}>
+                <IconLogout size={14} />
+                ออกจากระบบ
+              </button>
+            </div>
           </div>
         </aside>
 
         <div className="main-col">
           <header className="topbar">
             <div className="brand-mark" style={{ padding: 0 }}>
-              <span className="logo" aria-hidden="true">
-                2K
-              </span>
+              <img className="logo" src="/logo-sidebar.png" alt="" aria-hidden="true" />
             </div>
             <NavLinks />
           </header>

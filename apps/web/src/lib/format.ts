@@ -1,5 +1,19 @@
 /** ฟังก์ชันจัดรูปแบบสำหรับแสดงผล */
 
+/**
+ * วันที่แบบ YYYY-MM-DD ตามเวลาท้องถิ่น (ไม่ใช่ UTC)
+ *
+ * new Date().toISOString().slice(0,10) ผิดในเขตเวลาไทย (UTC+7) ช่วงเที่ยงคืนถึงตี 7
+ * เพราะ toISOString() แปลงเป็น UTC ก่อนเสมอ ทำให้ได้วันที่ของ "เมื่อวาน" แทนที่จะเป็น
+ * "วันนี้" — ใช้ตัวนี้แทนทุกจุดที่ต้องการวันที่ปัจจุบันของผู้ใช้เป็นสตริง
+ */
+export function localISODate(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -80,7 +94,7 @@ export const OUTCOME_LABEL: Record<string, string> = {
 }
 
 export const ROLE_LABEL: Record<string, string> = {
-  admin: 'ผู้ดูแลระบบ',
+  admin: 'ผู้ใช้งาน',
   hr: 'ฝ่ายบุคคล',
   ops: 'ฝ่ายปฏิบัติการ',
   viewer: 'อ่านอย่างเดียว',

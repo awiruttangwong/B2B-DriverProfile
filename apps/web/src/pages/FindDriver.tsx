@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
@@ -6,6 +6,80 @@ import type { Customer, DriverFitRow, VehicleType } from '../types/database'
 import { fmtDateShort, fmtNum, fmtPhone, fmtScore } from '../lib/format'
 import Combobox, { type ComboOption } from '../components/Combobox'
 import { IconTarget } from '../components/icons'
+
+interface RouteSuggestion {
+  route_raw: string
+  job_count: number
+}
+
+/**
+ * ช่องพิมพ์เส้นทางแบบอิสระ — ไม่บังคับเลือกจากลิสต์เหมือน Combobox
+ * เพราะค้นด้วย ILIKE คำที่พิมพ์ได้เลย พิมพ์อะไรก็ใช้ได้ ลิสต์เป็นแค่ทางลัด
+ */
+function RouteField({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string
+  onChange: (v: string) => void
+  suggestions: RouteSuggestion[]
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const q = value.trim().toLowerCase()
+  const filtered = (q ? suggestions.filter((s) => s.route_raw.toLowerCase().includes(q)) : suggestions).slice(0, 8)
+
+  return (
+    <div className="route-field" ref={wrapRef}>
+      <input
+        id="rt"
+        type="search"
+        autoComplete="off"
+        placeholder="เช่น ระยอง, คลังสุวินทวงศ์, แหลมฉบัง"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false)
+        }}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="combo-list" role="listbox">
+          {filtered.map((s) => (
+            <li
+              key={s.route_raw}
+              role="option"
+              aria-selected={s.route_raw === value}
+              className="combo-item"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onChange(s.route_raw)
+                setOpen(false)
+              }}
+            >
+              <span className="combo-label">{s.route_raw}</span>
+              <span className="combo-hint">{fmtNum(s.job_count)} เที่ยว</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function FindDriver() {
   const [customer, setCustomer] = useState('')
@@ -51,6 +125,16 @@ export default function FindDriver() {
     [vehicleTypes.data],
   )
 
+  const routeSuggestions = useQuery({
+    queryKey: ['route_suggestions'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('search_routes', { p_limit: 500 })
+      if (error) throw error
+      return (data ?? []) as RouteSuggestion[]
+    },
+    staleTime: 30 * 60_000,
+  })
+
   const results = useQuery({
     queryKey: ['fit', submitted],
     enabled: !!submitted,
@@ -79,7 +163,7 @@ export default function FindDriver() {
       </div>
 
       <div className="card card-pad" style={{ marginBottom: 18 }}>
-        <div className="row" style={{ gap: 12, alignItems: 'flex-end' }}>
+        <div className="filters-row">
           <div style={{ flex: '1 1 200px' }}>
             <label htmlFor="cu">ลูกค้า / ประเภทงาน</label>
             <Combobox
@@ -103,20 +187,14 @@ export default function FindDriver() {
             />
           </div>
           <div style={{ flex: '2 1 240px' }}>
-            <label htmlFor="rt">คำในเส้นทาง</label>
-            <input
-              id="rt"
-              type="search"
-              placeholder="เช่น ระยอง, คลังสุวินทวงศ์, แหลมฉบัง"
-              value={route}
-              onChange={(e) => setRoute(e.target.value)}
-            />
+            <label htmlFor="rt">เส้นทาง</label>
+            <RouteField value={route} onChange={setRoute} suggestions={routeSuggestions.data ?? []} />
           </div>
           <button
             className="btn btn-primary"
             onClick={() => setSubmitted({ customer, vehicleType, route })}
           >
-            จัดอันดับ
+            ค้นหา
           </button>
         </div>
         <p className="hint" style={{ marginTop: 10 }}>
@@ -131,7 +209,7 @@ export default function FindDriver() {
               <IconTarget size={22} />
             </span>
             <b>ยังไม่ได้จัดอันดับ</b>
-            เลือกลูกค้า ประเภทรถ หรือใส่คำในเส้นทางด้านบน แล้วกด “จัดอันดับ”
+            เลือกลูกค้า ประเภทรถ หรือใส่เส้นทางด้านบน แล้วกด “ค้นหา”
             <div style={{ marginTop: 12 }}>
               <button
                 className="btn btn-sm"

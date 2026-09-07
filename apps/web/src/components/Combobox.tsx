@@ -162,8 +162,10 @@ export default function Combobox({
     }
   }
 
+  const showClear = !disabled && !open && value.length > 0
+
   return (
-    <div className="combo" ref={wrapRef}>
+    <div className={`combo${showClear ? ' combo-has-clear' : ''}`} ref={wrapRef}>
       <input
         id={inputId}
         ref={inputRef}
@@ -191,6 +193,35 @@ export default function Combobox({
         }}
         onKeyDown={onKeyDown}
       />
+
+      {showClear && (
+        <button
+          type="button"
+          className="combo-clear"
+          tabIndex={-1}
+          aria-label="ล้างค่าที่เลือก"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onChange('')
+            setQuery('')
+            inputRef.current?.focus()
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
 
       <button
         type="button"

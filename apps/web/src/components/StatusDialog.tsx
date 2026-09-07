@@ -105,7 +105,7 @@ export default function StatusDialog({
               {driverName}
             </div>
           </div>
-          <button className="btn btn-sm" onClick={onClose}>
+          <button className="btn btn-sm btn-cancel" onClick={onClose}>
             ปิด
           </button>
         </div>
@@ -205,7 +205,7 @@ export default function StatusDialog({
           )}
 
           <div className="row" style={{ justifyContent: 'flex-end', marginTop: 18 }}>
-            <button className="btn" onClick={onClose}>
+            <button className="btn btn-cancel" onClick={onClose}>
               ยกเลิก
             </button>
             <button
