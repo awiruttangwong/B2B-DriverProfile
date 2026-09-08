@@ -138,6 +138,13 @@ export const IconLogout = (p: P) => (
   </Svg>
 )
 
+export const IconClock = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3.5 2" />
+  </Svg>
+)
+
 export const IconEdit = (p: P) => (
   <Svg {...p}>
     <path d="M12 20h9" />

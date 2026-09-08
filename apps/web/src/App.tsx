@@ -4,7 +4,15 @@ import { useQuery } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './lib/auth'
 import { IS_DEMO, supabase } from './lib/supabase'
 import { ROLE_LABEL, fmtNum } from './lib/format'
-import { IconLogout, IconStar, IconTarget, IconTruck, IconUpload, IconUsers } from './components/icons'
+import {
+  IconClock,
+  IconLogout,
+  IconStar,
+  IconTarget,
+  IconTruck,
+  IconUpload,
+  IconUsers,
+} from './components/icons'
 import ThemeToggle from './components/ThemeToggle'
 import Login from './pages/Login'
 import Drivers from './pages/Drivers'
@@ -13,6 +21,7 @@ import FindDriver from './pages/FindDriver'
 import PendingRatings from './pages/PendingRatings'
 import Upload from './pages/Upload'
 import NewJob from './pages/NewJob'
+import ActivityLog from './pages/ActivityLog'
 
 /** อักษรย่อสำหรับ avatar กลม — เอาตัวแรกของคำแรกกับคำที่สอง ถ้ามีคำเดียวก็ตัด 2 ตัวแรก */
 function initials(name: string): string {
@@ -48,14 +57,21 @@ function Tab({ to, icon, children, count }: { to: string; icon: ReactNode; child
   )
 }
 
-/** จำนวนงานที่ยังไม่มีใครให้คะแนน — โชว์เป็นตัวเลขบนเมนูให้เห็นว่ามีงานค้าง */
+/**
+ * จำนวนคนขับที่ควรประเมินก่อน — โชว์เป็นตัวเลขบนเมนูให้เห็นว่ามีงานค้าง
+ *
+ * นับเฉพาะกลุ่ม is_priority ให้ตรงกับที่หน้า /pending โชว์เป็นค่าเริ่มต้น
+ * ถ้านับทุกคนที่ยังไม่เคยประเมินจะได้ 1,290 ซึ่งเป็นตัวเลขที่ทำให้ท้อโดยไม่จำเป็น
+ * เพราะกว่าครึ่งเป็นคนที่วิ่งครั้งเดียวแล้วไม่กลับมาอีกเลย
+ */
 function usePendingCount() {
   const { data } = useQuery({
     queryKey: ['pending-count'],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from('pending_ratings')
-        .select('assignment_id', { count: 'exact' })
+        .from('drivers_pending_review')
+        .select('id', { count: 'exact' })
+        .eq('is_priority', true)
         .limit(1)
       if (error) throw error
       return count ?? 0
@@ -66,6 +82,7 @@ function usePendingCount() {
 }
 
 function NavLinks() {
+  const { can } = useAuth()
   const pending = usePendingCount()
   return (
     <nav className="nav" aria-label="เมนูหลัก">
@@ -76,7 +93,7 @@ function NavLinks() {
         หาคนสำหรับงาน
       </Tab>
       <Tab to="/pending" icon={<IconStar />} count={pending}>
-        รอให้คะแนน
+        รอประเมิน
       </Tab>
       <Tab to="/jobs/new" icon={<IconTruck />}>
         บันทึกงาน
@@ -84,12 +101,17 @@ function NavLinks() {
       <Tab to="/upload" icon={<IconUpload />}>
         อัปโหลดไฟล์
       </Tab>
+      {can('admin') && (
+        <Tab to="/activity-log" icon={<IconClock />}>
+          บันทึกกิจกรรม
+        </Tab>
+      )}
     </nav>
   )
 }
 
 function Shell() {
-  const { session, profile, loading, signOut } = useAuth()
+  const { session, profile, loading, can, signOut } = useAuth()
 
   if (loading && !session) {
     return (
@@ -101,7 +123,30 @@ function Shell() {
 
   if (!session) return <Login />
 
-  const displayName = profile?.full_name ?? session.user.email ?? '?'
+  // บัญชีที่ถูกปิดใช้งานยังล็อกอินผ่าน (Supabase Auth ไม่รู้จักคอลัมน์ is_active ของเรา)
+  // และยังอ่านข้อมูลได้ตาม policy ที่เปิดให้ authenticated ทุกคน — ต้องกันที่นี่
+  // ส่วนสิทธิ์ "เขียน" ฐานข้อมูลกันให้อยู่แล้วผ่าน has_role() ที่เช็ค is_active
+  if (profile && !profile.is_active) {
+    return (
+      <main className="page" style={{ maxWidth: 520, paddingTop: 80 }}>
+        <div className="card card-pad">
+          <h1 style={{ fontSize: 19, marginTop: 0 }}>บัญชีนี้ถูกปิดใช้งาน</h1>
+          <p className="muted" style={{ fontSize: 14 }}>
+            บัญชี {session.user.email} ถูกระงับการใช้งานโดยผู้ดูแลระบบ
+            ติดต่อผู้ดูแลระบบหากคิดว่าเป็นความผิดพลาด
+          </p>
+          <button className="btn btn-primary" onClick={() => void signOut()}>
+            ออกจากระบบ
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  // โชว์อีเมลเป็นหลัก ไม่ใช่ full_name — full_name เป็นแค่ชื่อเล่นสั้น ๆ (เช่น "พี่ซ้ง")
+  // ผู้ใช้ต้องเห็นอีเมลเต็มเพื่อยืนยันว่ากำลังใช้บัญชีไหนอยู่ ชื่อเล่นไปโชว์เป็น title
+  // (hover เห็น) แทน ไม่ได้หายไปไหน
+  const displayName = session.user.email ?? profile?.full_name ?? '?'
 
   return (
     <div className="app">
@@ -132,10 +177,15 @@ function Shell() {
             <div className="account-card">
               <div className="user-card">
                 <span className="user-avatar" aria-hidden="true">
-                  {initials(displayName)}
+                  {initials(profile?.full_name ?? displayName)}
                 </span>
                 <span className="user-info">
-                  <b style={{ fontSize: fitFontSize(displayName) }}>{displayName}</b>
+                  <b
+                    style={{ fontSize: fitFontSize(displayName) }}
+                    title={profile?.full_name ?? undefined}
+                  >
+                    {displayName}
+                  </b>
                   {profile && <span className="badge brand">{ROLE_LABEL[profile.role] ?? profile.role}</span>}
                 </span>
               </div>
@@ -163,6 +213,23 @@ function Shell() {
             <Route path="/pending" element={<PendingRatings />} />
             <Route path="/jobs/new" element={<NewJob />} />
             <Route path="/upload" element={<Upload />} />
+            <Route
+              path="/activity-log"
+              element={
+                // ต้องรอ profile โหลดก่อนตัดสินสิทธิ์ — ถ้า redirect ทันทีตอน loading
+                // ยังเป็น true (เช่น รีเฟรชหน้าตรง /activity-log) แอดมินจะโดนเด้งออก
+                // ไปหน้า /drivers ก่อนที่ role จะโหลดเสร็จด้วยซ้ำ
+                loading ? (
+                  <div className="empty" style={{ paddingTop: 120 }}>
+                    <span className="spinner" /> กำลังโหลด…
+                  </div>
+                ) : can('admin') ? (
+                  <ActivityLog />
+                ) : (
+                  <Navigate to="/drivers" replace />
+                )
+              }
+            />
             <Route path="*" element={<Navigate to="/drivers" replace />} />
           </Routes>
         </div>

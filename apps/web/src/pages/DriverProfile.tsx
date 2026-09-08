@@ -6,14 +6,14 @@ import { useAuth } from '../lib/auth'
 import type {
   CustomerPerfRow,
   DriverDirectoryRow,
+  DriverStatus,
   DriverStatusLogRow,
+  DriverReviewRow,
   JobHistoryRow,
 } from '../types/database'
 import {
   fmtDate,
   fmtDateShort,
-  fmtCostTotal,
-  fmtMoney,
   fmtNum,
   fmtPhone,
   fmtScore,
@@ -21,8 +21,7 @@ import {
   OUTCOME_LABEL,
   STATUS_LABEL,
 } from '../lib/format'
-import { IconEdit } from '../components/icons'
-import RatingDialog from '../components/RatingDialog'
+import { IconArrowLeft, IconEdit } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 
 interface CriteriaAvg {
@@ -36,9 +35,8 @@ interface CriteriaAvg {
 export default function DriverProfile() {
   const { id = '' } = useParams()
   const { can } = useAuth()
-  const [rating, setRating] = useState<{ assignmentId: string | null; label?: string } | null>(null)
   const [historyLimit, setHistoryLimit] = useState(25)
-  const [statusOpen, setStatusOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState<{ initialNext?: DriverStatus } | null>(null)
 
   const driver = useQuery({
     queryKey: ['driver', id],
@@ -98,6 +96,28 @@ export default function DriverProfile() {
     enabled: !!id,
   })
 
+  /**
+   * ใบประเมินของคนนี้ — ต้องอ่านจาก driver_ratings ตรง ๆ ไม่ใช่จาก driver_job_history
+   * เพราะ view นั้น join คะแนนด้วย assignment_id ซึ่งใบประเมินภาพรวมเป็น null เสมอ
+   * ถ้าอ่านจากที่นั่นเหตุผลที่ผู้ประเมินเขียนไว้จะไม่ขึ้นบนหน้าจอเลยสักใบ
+   */
+  const reviews = useQuery({
+    queryKey: ['driver', id, 'reviews'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('driver_ratings')
+        .select(
+          'id, overall_score, reason, tags, assign_again, created_at, assignment_id, rater:profiles!driver_ratings_rater_id_fkey(full_name)',
+        )
+        .eq('driver_id', id)
+        .is('voided_at', null)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as unknown as DriverReviewRow[]
+    },
+    enabled: !!id,
+  })
+
   const criteria = useQuery({
     queryKey: ['driver', id, 'criteria'],
     queryFn: async () => {
@@ -145,10 +165,7 @@ export default function DriverProfile() {
       .sort((a, b) => b.weight - a.weight)
   }, [criteria.data])
 
-  const ratedJobs = useMemo(
-    () => (history.data ?? []).filter((h) => h.rating_id && h.rating_reason),
-    [history.data],
-  )
+  const lastReviewAt = reviews.data?.[0]?.created_at ?? null
 
   if (driver.isLoading) {
     return (
@@ -165,20 +182,20 @@ export default function DriverProfile() {
     return (
       <main className="page">
         <div className="note-box err">ไม่พบ พขร. รายนี้</div>
-        <p style={{ marginTop: 14 }}>
-          <Link to="/drivers">← กลับไปรายชื่อ</Link>
-        </p>
+        <Link to="/drivers" className="back-link" style={{ marginTop: 14 }}>
+          <IconArrowLeft size={15} />
+          กลับไปรายชื่อ
+        </Link>
       </main>
     )
   }
 
   return (
     <main className="page">
-      <p style={{ margin: '0 0 14px' }}>
-        <Link to="/drivers" className="muted">
-          ← รายชื่อ พขร.
-        </Link>
-      </p>
+      <Link to="/drivers" className="back-link">
+        <IconArrowLeft size={15} />
+        รายชื่อ พขร.
+      </Link>
 
       {/* ------------------------------------------------ หัวโปรไฟล์ */}
       <div className="card" style={{ marginBottom: 18 }}>
@@ -199,7 +216,7 @@ export default function DriverProfile() {
               {can('admin', 'hr', 'ops') && (
                 <button
                   className="btn btn-sm"
-                  onClick={() => setStatusOpen(true)}
+                  onClick={() => setStatusOpen({})}
                   title="เปลี่ยนสถานะการรับงานของ พขร. คนนี้"
                 >
                   <IconEdit size={14} />
@@ -229,9 +246,13 @@ export default function DriverProfile() {
                   <small> / 5</small>
                 </div>
                 <div className="muted mono" style={{ fontSize: 11.5, marginTop: 5 }}>
-                  ปรับแล้ว · จาก {d.rating_count} รีวิว
-                  <br />
-                  ค่าเฉลี่ยดิบ {fmtScore(d.raw_score)}
+                  จากการประเมิน {d.rating_count} ครั้ง
+                  {lastReviewAt && (
+                    <>
+                      <br />
+                      ล่าสุด {fmtDate(lastReviewAt)}
+                    </>
+                  )}
                 </div>
               </>
             ) : (
@@ -240,23 +261,14 @@ export default function DriverProfile() {
                   ยังไม่มีคะแนน
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  ให้คะแนนจากงานในประวัติด้านล่าง
+                  ประเมินได้ที่หน้า <Link to="/pending">รอประเมิน</Link>
                 </div>
               </div>
-            )}
-            {can('admin', 'ops', 'hr') && (
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ marginTop: 10 }}
-                onClick={() => setRating({ assignmentId: null })}
-              >
-                ให้คะแนนทั่วไป
-              </button>
             )}
           </div>
         </div>
 
-        <div className="stats">
+        <div className="stats stats-3">
           <div className="stat">
             <div className="v num">{fmtNum(d.total_jobs)}</div>
             <div className="l">เที่ยววิ่งสะสม</div>
@@ -264,12 +276,6 @@ export default function DriverProfile() {
           <div className="stat">
             <div className="v num">{fmtNum(d.customer_count)}</div>
             <div className="l">ลูกค้าที่เคยวิ่งให้</div>
-          </div>
-          <div className="stat">
-            <div className="v num" style={{ fontSize: (d.total_cost === 0 && (d.total_jobs ?? 0) > 0) ? 15 : undefined }}>
-              {fmtCostTotal(d.total_cost, d.total_jobs)}
-            </div>
-            <div className="l">ค่าจ้างสะสม (บาท)</div>
           </div>
           <div className="stat">
             <div className="v" style={{ fontSize: 16 }}>
@@ -327,26 +333,22 @@ export default function DriverProfile() {
                 <thead>
                   <tr>
                     <th>วันที่</th>
-                    {/* ลำดับงาน — ตัวเดียวที่แยกเที่ยวซ้ำวัน ซ้ำเส้นทาง ซ้ำราคาออกจากกัน */}
-                    <th>ลำดับ</th>
                     <th>ลูกค้า</th>
                     <th>เส้นทาง</th>
                     <th>รถ</th>
-                    <th className="right">ค่าจ้าง</th>
-                    <th>คะแนน</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.isLoading && (
                     <tr>
-                      <td colSpan={7} className="empty">
+                      <td colSpan={4} className="empty">
                         <span className="spinner" /> กำลังโหลด…
                       </td>
                     </tr>
                   )}
                   {!history.isLoading && (history.data?.length ?? 0) === 0 && (
                     <tr>
-                      <td colSpan={7} className="empty">
+                      <td colSpan={4} className="empty">
                         ยังไม่มีประวัติงาน
                       </td>
                     </tr>
@@ -355,9 +357,6 @@ export default function DriverProfile() {
                     <tr key={h.assignment_id}>
                       <td className="nowrap mono" style={{ fontSize: 12 }}>
                         {fmtDateShort(h.job_date)}
-                      </td>
-                      <td className="mono muted" style={{ fontSize: 11.5 }}>
-                        {h.seq_no ?? '—'}
                       </td>
                       <td className="nowrap">
                         <span className="badge">{h.customer_code ?? '—'}</span>
@@ -376,30 +375,6 @@ export default function DriverProfile() {
                           <div className="muted" style={{ fontSize: 10.5 }}>
                             {h.plate}
                           </div>
-                        )}
-                      </td>
-                      <td className="right num">{fmtMoney(h.cost)}</td>
-                      <td className="nowrap">
-                        {h.overall_score !== null ? (
-                          <span className="num" style={{ fontWeight: 600 }}>
-                            {fmtScore(h.overall_score)}
-                          </span>
-                        ) : can('admin', 'ops', 'hr') ? (
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() =>
-                              setRating({
-                                assignmentId: h.assignment_id,
-                                label: `${fmtDate(h.job_date)} · ${h.customer_code ?? ''} · ${
-                                  h.route_raw ?? ''
-                                }`,
-                              })
-                            }
-                          >
-                            ให้คะแนน
-                          </button>
-                        ) : (
-                          <span className="muted">—</span>
                         )}
                       </td>
                     </tr>
@@ -421,19 +396,20 @@ export default function DriverProfile() {
             <div className="card-head">
               <h2>เหตุผลที่ได้คะแนนแบบนี้</h2>
             </div>
-            {ratedJobs.length === 0 ? (
+            {(reviews.data?.length ?? 0) === 0 ? (
               <div className="empty">
-                ยังไม่มีใครให้คะแนน พขร. คนนี้
+                ยังไม่เคยมีใครประเมิน พขร. คนนี้
                 <br />
                 <span style={{ fontSize: 13 }}>
-                  คะแนนจะมีความหมายก็ต่อเมื่อมีเหตุผลกำกับ — เริ่มจากงานล่าสุดในตารางด้านบน
+                  คะแนนจะมีความหมายก็ต่อเมื่อมีเหตุผลกำกับ — ประเมินได้ที่หน้า{' '}
+                  <Link to="/pending">รอประเมิน</Link>
                 </span>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {ratedJobs.map((r) => (
+                {(reviews.data ?? []).map((r) => (
                   <div
-                    key={r.rating_id}
+                    key={r.id}
                     className="card-pad"
                     style={{ borderBottom: '1px solid var(--line)' }}
                   >
@@ -442,15 +418,21 @@ export default function DriverProfile() {
                         {fmtScore(r.overall_score)}
                       </span>
                       <span className="mono muted" style={{ fontSize: 12 }}>
-                        {fmtDate(r.job_date)} · {r.customer_code} · {r.route_raw}
+                        {fmtDate(r.created_at)}
+                        {r.rater?.full_name ? ` · ${r.rater.full_name}` : ''}
                       </span>
+                      {r.assign_again !== null && (
+                        <span className={`badge ${r.assign_again ? 'ok' : 'bad'}`}>
+                          {r.assign_again ? 'ให้งานอีก' : 'ไม่ให้งานแล้ว'}
+                        </span>
+                      )}
                     </div>
                     <p style={{ margin: '0 0 6px', fontSize: 14, color: 'var(--ink-2)' }}>
-                      {r.rating_reason}
+                      {r.reason}
                     </p>
-                    {r.rating_tags && r.rating_tags.length > 0 && (
+                    {r.tags && r.tags.length > 0 && (
                       <div className="row" style={{ gap: 5 }}>
-                        {r.rating_tags.map((t) => (
+                        {r.tags.map((t) => (
                           <span key={t} className="tag">
                             {t}
                           </span>
@@ -468,7 +450,7 @@ export default function DriverProfile() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div className="card">
           <div className="card-head">
-            <h2>เก่งงานสายไหน</h2>
+            <h2>ผลดำเนินงานแยกตามรายลูกค้า</h2>
           </div>
           {(perf.data?.length ?? 0) === 0 ? (
             <div className="empty">ยังไม่มีข้อมูล</div>
@@ -478,8 +460,7 @@ export default function DriverProfile() {
                 <thead>
                   <tr>
                     <th>ลูกค้า</th>
-                    <th className="right">เที่ยว</th>
-                    <th className="right">คะแนน</th>
+                    <th className="right">จำนวนเที่ยวที่วิ่งกับลูกค้า</th>
                     <th>ล่าสุด</th>
                   </tr>
                 </thead>
@@ -490,9 +471,6 @@ export default function DriverProfile() {
                         <span className="badge">{p.customer_code}</span>
                       </td>
                       <td className="right num">{p.jobs}</td>
-                      <td className="right num">
-                        {p.avg_score !== null ? fmtScore(p.avg_score) : '—'}
-                      </td>
                       <td className="nowrap mono" style={{ fontSize: 11.5 }}>
                         {fmtDateShort(p.last_job_date)}
                       </td>
@@ -504,8 +482,8 @@ export default function DriverProfile() {
           )}
           <div className="card-pad">
             <p className="hint" style={{ margin: 0 }}>
-              ตารางนี้คือคำตอบของ “คนไหนเหมาะกับงานไหน” — จำนวนเที่ยวบอกความคุ้นเคย
-              ส่วนคะแนนบอกคุณภาพ ทั้งสองอย่างถูกใช้คำนวณอันดับในหน้าหาคนสำหรับงาน
+              ตารางนี้คือคำตอบของ “คนไหนเหมาะกับงานไหน” — จำนวนเที่ยวบอกความคุ้นเคยกับลูกค้ารายนี้
+              ดูคะแนนคุณภาพเป็นรายงานได้ที่ตาราง “ประวัติงาน” ด้านซ้าย
             </p>
           </div>
         </div>
@@ -517,32 +495,45 @@ export default function DriverProfile() {
               <h2>ประวัติการเปลี่ยนสถานะ</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {(statusLog.data ?? []).map((h) => (
+              {(statusLog.data ?? []).map((h, i) => (
                 <div
                   key={h.id}
                   className="card-pad"
                   style={{ borderBottom: '1px solid var(--line)', paddingTop: 13, paddingBottom: 13 }}
                 >
-                  <div className="row" style={{ gap: 7 }}>
-                    {h.from_status && (
-                      <>
-                        <span className="badge">{STATUS_LABEL[h.from_status] ?? h.from_status}</span>
-                        <span className="muted" aria-hidden="true">
-                          →
-                        </span>
-                      </>
+                  <div className="row" style={{ gap: 7, justifyContent: 'space-between' }}>
+                    <div className="row" style={{ gap: 7 }}>
+                      {h.from_status && (
+                        <>
+                          <span className="badge">{STATUS_LABEL[h.from_status] ?? h.from_status}</span>
+                          <span className="muted" aria-hidden="true">
+                            →
+                          </span>
+                        </>
+                      )}
+                      <span
+                        className={`badge ${
+                          h.to_status === 'active'
+                            ? 'ok'
+                            : h.to_status === 'blacklisted'
+                              ? 'bad'
+                              : 'warn'
+                        }`}
+                      >
+                        {STATUS_LABEL[h.to_status] ?? h.to_status}
+                      </span>
+                    </div>
+                    {/* ย้อนกลับได้เฉพาะรายการล่าสุด — ไม่แก้/ลบประวัติเดิม แค่เปลี่ยนสถานะ
+                        กลับแล้วบันทึกเป็นรายการใหม่ต่อท้าย ร่องรอยเดิมยังอยู่ครบ */}
+                    {i === 0 && h.from_status && d.status === h.to_status && can('admin', 'hr', 'ops') && (
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setStatusOpen({ initialNext: h.from_status! })}
+                        title={`เปลี่ยนสถานะกลับเป็น "${STATUS_LABEL[h.from_status] ?? h.from_status}"`}
+                      >
+                        ย้อนกลับ
+                      </button>
                     )}
-                    <span
-                      className={`badge ${
-                        h.to_status === 'active'
-                          ? 'ok'
-                          : h.to_status === 'blacklisted'
-                            ? 'bad'
-                            : 'warn'
-                      }`}
-                    >
-                      {STATUS_LABEL[h.to_status] ?? h.to_status}
-                    </span>
                   </div>
                   {h.reason && (
                     <p style={{ margin: '6px 0 0', fontSize: 13.5, color: 'var(--ink-2)' }}>
@@ -566,17 +557,8 @@ export default function DriverProfile() {
           driverName={d.full_name}
           current={d.status}
           currentReason={d.status_reason}
-          onClose={() => setStatusOpen(false)}
-        />
-      )}
-
-      {rating && (
-        <RatingDialog
-          driverId={d.id}
-          driverName={d.full_name}
-          assignmentId={rating.assignmentId}
-          jobLabel={rating.label}
-          onClose={() => setRating(null)}
+          initialNext={statusOpen.initialNext}
+          onClose={() => setStatusOpen(null)}
         />
       )}
     </main>

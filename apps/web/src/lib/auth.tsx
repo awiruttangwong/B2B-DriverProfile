@@ -50,25 +50,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!session?.user) return
+    const uid = session?.user?.id
+    if (!uid) return
     let alive = true
     setLoading(true)
 
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle()
-      .then(({ data }) => {
+    // ต้องมี catch เสมอ — ถ้าคำสั่งนี้ล้มเหลว (เน็ตหลุดจังหวะเปิดแอป) แล้วไม่จับไว้
+    // setLoading(false) จะไม่ถูกเรียก ผู้ใช้จะค้างอยู่กับหน้าจอที่ยังไม่รู้สิทธิ์ตัวเอง
+    // ตลอดไป (เมนูที่ต้องใช้สิทธิ์หายหมด และหน้าที่กันด้วย role จะหมุนไม่จบ)
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', uid)
+          .maybeSingle()
         if (!alive) return
+        if (error) throw error
         setProfile((data as Profile | null) ?? null)
-        setLoading(false)
-      })
+      } catch (e) {
+        if (!alive) return
+        console.error('[auth] โหลดข้อมูลผู้ใช้ไม่สำเร็จ', e)
+        setProfile(null)
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
 
     return () => {
       alive = false
     }
-  }, [session?.user?.id, session?.user])
+    // ผูกกับ id อย่างเดียว — ผูกกับ object session.user ด้วยจะยิงซ้ำทุกครั้งที่
+    // supabase ต่ออายุ token เพราะได้ object ใหม่ทั้งที่เป็นคนเดิม
+  }, [session?.user?.id])
 
   const value = useMemo<AuthState>(
     () => ({

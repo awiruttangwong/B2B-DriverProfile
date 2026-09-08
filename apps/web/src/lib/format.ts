@@ -14,6 +14,22 @@ export function localISODate(d: Date = new Date()): string {
   return `${y}-${m}-${day}`
 }
 
+/**
+ * ทำความสะอาดคำค้นก่อนเอาไปต่อเป็นเงื่อนไข .or() ของ PostgREST
+ *
+ * PostgREST รับเงื่อนไข or() มาเป็นสตริงเดียวแล้วแยกเองด้วย , และ ( ) การเอา
+ * คำที่ผู้ใช้พิมพ์ไปต่อสตริงตรง ๆ จึงพังสองแบบ (ทดสอบกับ production จริงแล้ว):
+ *   - พิมพ์จุลภาค เช่น "ก,ข"  -> เซิร์ฟเวอร์ตอบ 400 หน้าเว็บขึ้น "โหลดข้อมูลไม่สำเร็จ"
+ *   - พิมพ์วงเล็บ เช่น "ก)"   -> กลุ่มเงื่อนไขเพี้ยน คืนคนที่ไม่ตรงคำค้นแบบเงียบ ๆ
+ * ส่วน % _ * เป็นไวลด์การ์ดของ ilike ถ้าปล่อยไว้ผู้ใช้จะได้ผลลัพธ์ที่อธิบายไม่ได้
+ */
+export function safeSearchTerm(raw: string): string {
+  return raw
+    .replace(/[,()\\%_*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -22,6 +38,19 @@ export function fmtDate(iso: string | null | undefined): string {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+  })
+}
+
+export function fmtDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -91,6 +120,22 @@ export const OUTCOME_LABEL: Record<string, string> = {
   no_show: 'ไม่มารับงาน',
   cancelled: 'ยกเลิก',
   incident: 'มีเหตุ',
+}
+
+export const ACTION_LABEL: Record<string, string> = {
+  driver_status: 'เปลี่ยนสถานะ พขร.',
+  rating_create: 'ให้คะแนน พขร.',
+  rating_void: 'ยกเลิกใบให้คะแนน',
+  job_import: 'บันทึก/อัปโหลดงาน',
+  user_join: 'ผู้ใช้งานใหม่',
+}
+
+export const ACTION_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'brand'> = {
+  driver_status: 'warn',
+  rating_create: 'ok',
+  rating_void: 'bad',
+  job_import: 'brand',
+  user_join: 'brand',
 }
 
 export const ROLE_LABEL: Record<string, string> = {

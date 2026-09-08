@@ -118,20 +118,43 @@ export interface CustomerPerfRow {
   rating_count: number
 }
 
-/** view: pending_ratings — งานที่จบแล้วแต่ยังไม่มีใครให้คะแนน */
-export interface PendingRatingRow {
-  assignment_id: string
-  driver_id: string
-  driver_name: string
-  driver_phone: string
-  job_id: string
-  job_date: string
-  customer_code: string | null
-  route_raw: string | null
-  assigned_by: string | null
+/** view: drivers_pending_review — พขร. ที่ยังไม่เคยได้รับการประเมินภาพรวมเลยสักครั้ง */
+export interface DriverPendingReviewRow {
+  id: string
+  driver_code: string
+  full_name: string
+  phone: string
+  status: DriverStatus
+  total_jobs: number
+  last_job_date: string | null
+  days_since_last_job: number | null
+  rating_count: number
+  /** ควรประเมินก่อน — วิ่งตั้งแต่ 10 เที่ยว หรือยังวิ่งอยู่ใน 90 วันล่าสุด */
+  is_priority: boolean
 }
 
-/** rpc: search_drivers — ผลการจัดอันดับความเหมาะสมกับงาน */
+/**
+ * table: driver_ratings — ใบประเมิน
+ * assignment_id เป็น null = ประเมินภาพรวมทั้งคน ซึ่งเป็นรูปแบบปกติของระบบตอนนี้
+ */
+export interface DriverReviewRow {
+  id: string
+  overall_score: number
+  reason: string
+  tags: string[] | null
+  assign_again: boolean | null
+  created_at: string
+  assignment_id: string | null
+  rater: { full_name: string } | null
+}
+
+/**
+ * rpc: search_drivers — ผลการจัดอันดับ พขร. ที่ตรงกับงาน
+ *
+ * ไม่มีคะแนนผสมสูตรเดียว (เช่น fit_score) เพราะข้อมูลจริงยังไม่ครบพอจะคำนวณแบบนั้น
+ * ได้อย่างซื่อสัตย์ — เรียงลำดับด้วยข้อมูลจริงหลายชั้นแทน ดู order by ใน
+ * supabase/migrations/0009_search_drivers_real_signals.sql
+ */
 export interface DriverFitRow {
   driver_id: string
   driver_code: string
@@ -144,7 +167,6 @@ export interface DriverFitRow {
   adjusted_score: number | null
   rating_count: number
   last_job_date: string | null
-  fit_score: number
 }
 
 /** view: driver_status_log — ใครเปลี่ยนสถานะ เมื่อไร เพราะอะไร */
@@ -181,6 +203,22 @@ export interface DriverRating {
   created_at: string
   locked_at: string | null
   voided_at: string | null
+}
+
+/** view: activity_log — รวมร่องรอยการกระทำของทุก user ทั้งระบบไว้จุดเดียว จำกัด admin เท่านั้น */
+export interface ActivityLogRow {
+  id: string
+  at: string
+  actor_id: string | null
+  actor_name: string | null
+  actor_email: string | null
+  actor_role: AppRole | null
+  action: string
+  action_label: string
+  target_label: string | null
+  target_type: 'driver' | 'batch' | 'user' | null
+  target_id: string | null
+  detail: Record<string, unknown> | null
 }
 
 export interface ImportBatch {

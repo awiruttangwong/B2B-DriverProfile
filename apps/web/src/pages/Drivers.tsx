@@ -4,13 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow } from '../types/database'
-import { fmtNum, fmtPhone, fmtSince, STATUS_LABEL } from '../lib/format'
+import { fmtNum, fmtPhone, fmtSince, safeSearchTerm, STATUS_LABEL } from '../lib/format'
 import ScoreCell from '../components/ScoreCell'
 import ReadinessPanel from '../components/ReadinessPanel'
 import StatusDialog from '../components/StatusDialog'
 import { IconSearch, IconUsers } from '../components/icons'
 
-type SortKey = 'total_jobs' | 'customer_count' | 'adjusted_score' | 'last_job_date' | 'full_name'
+type SortKey = 'total_jobs' | 'adjusted_score' | 'last_job_date' | 'full_name'
 
 const PAGE_SIZE = 50
 
@@ -50,17 +50,8 @@ function DriverSearchField({
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  const q = value.trim().toLowerCase()
-  const filtered = q
-    ? suggestions
-        .filter(
-          (s) =>
-            s.full_name.toLowerCase().includes(q) ||
-            (s.phone ?? '').includes(q) ||
-            s.driver_code.toLowerCase().includes(q),
-        )
-        .slice(0, 8)
-    : []
+  // คำแนะนำมาจากฐานข้อมูลแล้ว (จำกัด 8 รายการ) ไม่ต้องกรองซ้ำในเครื่อง
+  const filtered = value.trim() ? suggestions : []
 
   return (
     <div className={`search-field${value ? ' has-clear' : ''}`} ref={wrapRef}>
@@ -183,8 +174,8 @@ export default function Drivers() {
         .select('*', { count: 'exact' })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
 
-      if (dq.trim()) {
-        const t = dq.trim()
+      const t = safeSearchTerm(dq)
+      if (t) {
         query = query.or(`full_name.ilike.%${t}%,phone.ilike.%${t}%,driver_code.ilike.%${t}%`)
       }
       if (status) query = query.eq('status', status)
@@ -205,12 +196,21 @@ export default function Drivers() {
       const dir = () =>
         supabase.from('driver_directory').select('id', { count: 'exact' }).limit(1)
 
-      const [all, regular, recent, pending, jobs] = await Promise.all([
+      const [all, regular, recent, pending, priorityAll] = await Promise.all([
         dir().eq('status', 'active'),
         dir().eq('status', 'active').gte('total_jobs', 10),
         dir().eq('status', 'active').lte('days_since_last_job', 30),
-        supabase.from('pending_ratings').select('assignment_id', { count: 'exact' }).limit(1),
-        supabase.from('driver_job_history').select('assignment_id', { count: 'exact' }).limit(1),
+        supabase
+          .from('drivers_pending_review')
+          .select('id', { count: 'exact' })
+          .eq('is_priority', true)
+          .limit(1),
+        // ตัวหารของแถบความคืบหน้า ต้องเป็นกลุ่มเดียวกับตัวตั้ง (คนที่ควรประเมิน
+        // ทั้งหมด ไม่ว่าประเมินไปแล้วหรือยัง) ไม่ใช่ พขร. ทั้งระบบ ไม่งั้นคนที่
+        // "ยังไม่ประเมินแต่ไม่เข้าเกณฑ์" จะถูกนับเป็นประเมินแล้วโดยอัตโนมัติ
+        dir()
+          .in('status', ['active', 'probation'])
+          .or('total_jobs.gte.10,days_since_last_job.lte.90'),
       ])
 
       return {
@@ -218,22 +218,30 @@ export default function Drivers() {
         regular: regular.count ?? 0,
         recent: recent.count ?? 0,
         pending: pending.count ?? 0,
-        totalJobs: jobs.count ?? 0,
+        priorityAll: priorityAll.count ?? 0,
       }
     },
   })
 
-  // รายชื่อทั้งหมดแบบบาง ๆ ไว้กรองฝั่งเครื่องสำหรับคำแนะนำตอนพิมพ์ค้นหา
-  // ไม่ผูกกับตัวกรองสถานะ/จำนวนเที่ยว เพราะเป็นแค่ทางลัดกระโดดไปหน้าโปรไฟล์ ไม่ใช่ผลลัพธ์ตาราง
+  // คำแนะนำตอนพิมพ์ค้นหา — ค้นที่ฐานข้อมูลแล้วเอามาแค่ 8 รายการ
+  //
+  // เดิมโหลดรายชื่อทั้งหมดสูงสุด 2,000 แถวมากรองในเครื่อง ซึ่งดึงข้อมูลหลักร้อย KB
+  // ทุกครั้งที่เปิดหน้านี้ ทั้งที่ผู้ใช้เห็นแค่ 8 บรรทัด และจะพังเงียบ ๆ เมื่อ พขร.
+  // เกิน 2,000 คน (คนที่ 2,001 เป็นต้นไปจะไม่ขึ้นในคำแนะนำเลยโดยไม่มีอะไรบอก)
+  //
+  // ไม่ผูกกับตัวกรองสถานะ/จำนวนเที่ยว เพราะเป็นทางลัดกระโดดไปหน้าโปรไฟล์ ไม่ใช่ผลลัพธ์ตาราง
   const suggestPool = useQuery({
-    queryKey: ['driver-suggest-pool'],
+    queryKey: ['driver-suggest', dq],
+    enabled: safeSearchTerm(dq).length >= 2,
     staleTime: 5 * 60_000,
     queryFn: async () => {
+      const t = safeSearchTerm(dq)
       const { data, error } = await supabase
         .from('driver_directory')
         .select('id, full_name, phone, driver_code, status')
-        .order('full_name')
-        .range(0, 1999)
+        .or(`full_name.ilike.%${t}%,phone.ilike.%${t}%,driver_code.ilike.%${t}%`)
+        .order('total_jobs', { ascending: false, nullsFirst: false })
+        .limit(8)
       if (error) throw error
       return (data ?? []) as DriverSuggestion[]
     },
@@ -290,8 +298,8 @@ export default function Drivers() {
         total={kpi.data?.all}
         regular={kpi.data?.regular}
         recent={kpi.data?.recent}
-        totalJobs={kpi.data?.totalJobs}
         pending={kpi.data?.pending}
+        priorityAll={kpi.data?.priorityAll}
         loading={kpi.isLoading}
       />
 
@@ -338,8 +346,7 @@ export default function Drivers() {
             <tr>
               <Th k="full_name">พขร.</Th>
               <th>เบอร์โทร</th>
-              <Th k="total_jobs">เที่ยว</Th>
-              <Th k="customer_count">ลูกค้า</Th>
+              <Th k="total_jobs">เที่ยววิ่งสะสม</Th>
               <Th k="adjusted_score">คะแนน</Th>
               <Th k="last_job_date">งานล่าสุด</Th>
               <th>สถานะ</th>
@@ -349,7 +356,7 @@ export default function Drivers() {
             {isLoading &&
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: 6 }).map((__, j) => (
                     <td key={j}>
                       <div className="sk" style={{ width: j === 0 ? '70%' : '50%' }} />
                     </td>
@@ -359,7 +366,7 @@ export default function Drivers() {
 
             {!isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={6}>
                   <div className="empty">
                     <span className="e-icon">
                       <IconUsers size={22} />
@@ -398,7 +405,6 @@ export default function Drivers() {
                   </td>
                   <td className="mono nowrap">{fmtPhone(d.phone)}</td>
                   <td className="num">{fmtNum(d.total_jobs)}</td>
-                  <td className="num">{fmtNum(d.customer_count)}</td>
                   <td>
                     <ScoreCell score={d.adjusted_score} count={d.rating_count} />
                   </td>

@@ -21,7 +21,8 @@ const QUICK_TAGS = [
 interface Props {
   driverId: string
   driverName: string
-  assignmentId: string | null
+  /** ไม่ระบุ = ประเมินภาพรวมทั้งคน (ไม่ผูกกับเที่ยวใดเที่ยวหนึ่ง) — เป็นโหมดปกติของระบบ */
+  assignmentId?: string
   jobLabel?: string
   onClose: () => void
 }
@@ -71,41 +72,31 @@ export default function RatingDialog({
     mutationFn: async () => {
       if (!session?.user) throw new Error('ยังไม่ได้เข้าสู่ระบบ')
 
-      // ค่า overall_score จะถูกคำนวณใหม่โดย trigger หลังบันทึกคะแนนรายเกณฑ์
-      // ค่าที่ส่งไปตรงนี้เป็นค่าเริ่มต้นเพื่อผ่าน NOT NULL เท่านั้น
-      const { data: rating, error: e1 } = await supabase
-        .from('driver_ratings')
-        .insert({
-          driver_id: driverId,
-          assignment_id: assignmentId,
-          rater_id: session.user.id,
-          overall_score: preview ?? 3,
-          reason: reason.trim(),
-          tags,
-          assign_again: assignAgain,
-        })
-        .select('id')
-        .single()
-
-      if (e1) throw e1
-
-      const rows = criteria
-        .filter((c) => scores[c.code])
-        .map((c) => ({
-          rating_id: rating.id as string,
-          criteria_id: c.id,
-          score: scores[c.code] as number,
-        }))
-
-      const { error: e2 } = await supabase.from('rating_scores').insert(rows)
-      if (e2) throw e2
+      // ยิงคำสั่งเดียวจบผ่านฟังก์ชันในฐานข้อมูล = ทรานแซกชันเดียว
+      // เดิมยิงสองคำสั่ง (ใบคะแนน แล้วค่อยคะแนนรายเกณฑ์) ถ้าคำสั่งที่สองพัง
+      // จะเหลือใบคะแนนเปล่าค้างถาวรที่ลบเองไม่ได้ และคะแนนรวมจะเป็นค่าที่
+      // เบราว์เซอร์คำนวณส่งไป ไม่ใช่ค่าที่ฐานข้อมูลคำนวณจากคะแนนจริง
+      const { error } = await supabase.rpc('submit_rating', {
+        p_driver_id: driverId,
+        p_assignment_id: assignmentId ?? null,
+        p_reason: reason.trim(),
+        p_tags: tags,
+        p_assign_again: assignAgain,
+        p_scores: criteria
+          .filter((c) => scores[c.code])
+          .map((c) => ({ code: c.code, score: scores[c.code] as number })),
+      })
+      if (error) throw error
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['driver'] })
       void qc.invalidateQueries({ queryKey: ['drivers'] })
       void qc.invalidateQueries({ queryKey: ['pending'] })
-      // ไม่ทำแบบนี้ตัวเลขค้างบนเมนู "รอให้คะแนน" จะไม่ลดจนกว่าแคชจะหมดอายุเอง (2 นาที)
+      // ไม่ทำแบบนี้ตัวเลขค้างบนเมนู "รอประเมิน" จะไม่ลดจนกว่าแคชจะหมดอายุเอง (2 นาที)
       void qc.invalidateQueries({ queryKey: ['pending-count'] })
+      // อันดับในหน้าหาคนสำหรับงานใช้คะแนนจริงเป็นตัวเรียงหลัก ต้องล้างด้วย
+      // ไม่งั้นให้คะแนนเสร็จแล้วกลับไปดูอันดับจะยังเป็นของก่อนให้คะแนน
+      void qc.invalidateQueries({ queryKey: ['fit'] })
       onClose()
     },
     onError: (e: Error) => setErr(translate(e.message)),
@@ -122,11 +113,9 @@ export default function RatingDialog({
         <div className="card-head">
           <div>
             <h2>ให้คะแนน · {driverName}</h2>
-            {jobLabel && (
-              <div className="muted" style={{ fontSize: 13 }}>
-                {jobLabel}
-              </div>
-            )}
+            <div className="muted" style={{ fontSize: 13 }}>
+              {jobLabel ?? 'ประเมินภาพรวมทั้งการทำงาน — ไม่ผูกกับเที่ยวใดเที่ยวหนึ่ง'}
+            </div>
           </div>
           <button className="btn btn-sm btn-cancel" onClick={onClose}>
             ปิด
@@ -134,13 +123,6 @@ export default function RatingDialog({
         </div>
 
         <div className="card-pad">
-          {!assignmentId && (
-            <div className="note-box" style={{ marginBottom: 16 }}>
-              คะแนนนี้ไม่ได้ผูกกับงานใดงานหนึ่ง จะถูกบันทึกไว้แต่มีน้ำหนักน้อยกว่า
-              คะแนนที่ให้จากงานจริง ถ้าเป็นไปได้ให้เข้าไปให้คะแนนจากรายการงานแทน
-            </div>
-          )}
-
           {criteria.map((c) => (
             <div key={c.id} style={{ marginBottom: 14 }}>
               <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
@@ -248,7 +230,7 @@ export default function RatingDialog({
           </div>
 
           <p className="hint" style={{ marginTop: 10 }}>
-            แก้ไขได้ภายใน 24 ชั่วโมง หลังจากนั้นระบบจะล็อก และลบไม่ได้
+            บันทึกแล้วลบไม่ได้ และยังไม่มีหน้าจอให้แก้ไขย้อนหลัง — ตรวจคะแนนกับเหตุผลให้ชัดก่อนกดบันทึก
           </p>
         </div>
       </div>
@@ -277,6 +259,7 @@ function Stars({ value, onChange }: { value: number; onChange: (v: number) => vo
 }
 
 function translate(msg: string): string {
+  if (msg.includes('ต้องให้คะแนนครบทุกเกณฑ์')) return msg
   if (msg.includes('driver_ratings_one_per_job'))
     return 'คุณให้คะแนนงานนี้ไปแล้ว หนึ่งงานให้คะแนนได้คนละหนึ่งครั้ง'
   if (msg.includes('driver_ratings_reason_len'))

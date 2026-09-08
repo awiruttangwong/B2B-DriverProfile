@@ -25,7 +25,6 @@ const FILE_TABLES = new Set([
   'driver_directory',
   'driver_job_history',
   'driver_customer_perf',
-  'pending_ratings',
   'customers',
   'vehicle_types',
   'rating_criteria',
@@ -36,8 +35,36 @@ const FILE_TABLES = new Set([
   'vehicles',
 ])
 
+/**
+ * drivers_pending_review ไม่มีไฟล์ demo ของตัวเอง — คำนวณสดจาก driver_directory
+ * ที่โหลดอยู่แล้ว (rating_count = 0) แทน เพราะเป็นแค่ filter/map ของข้อมูลเดิม
+ * ไม่ต้องให้ build_demo_data.py คำนวณล่วงหน้าซ้ำอีกไฟล์
+ */
+async function loadPendingReview(): Promise<Row[]> {
+  const dir = await loadTable('driver_directory')
+  return dir
+    .filter((d) => (Number(d.rating_count) || 0) === 0 && (d.status === 'active' || d.status === 'probation'))
+    .map((d) => ({
+      id: d.id,
+      driver_code: d.driver_code,
+      full_name: d.full_name,
+      phone: d.phone,
+      status: d.status,
+      total_jobs: d.total_jobs ?? 0,
+      last_job_date: d.last_job_date ?? null,
+      days_since_last_job: d.days_since_last_job ?? null,
+      rating_count: d.rating_count ?? 0,
+      is_priority:
+        Number(d.total_jobs ?? 0) >= 10 || Number(d.days_since_last_job ?? Infinity) <= 90,
+    }))
+}
+
 async function loadTable(table: string): Promise<Row[]> {
   const extra = writes.get(table) ?? []
+  if (table === 'drivers_pending_review') {
+    const rows = await loadPendingReview()
+    return extra.length ? [...extra, ...rows] : rows
+  }
   if (!FILE_TABLES.has(table)) return extra
 
   let base = cache.get(table)
@@ -90,10 +117,12 @@ function parseCondition(expr: string): Filter {
       return (r) => String(r[col] ?? '').includes(val.replace(/%/g, ''))
     case 'eq':
       return (r) => String(r[col] ?? '') === val
+    // ใช้ cmp ที่รู้ชนิด ไม่ใช่เทียบข้อความ ไม่งั้น "9" จะมากกว่า "10"
+    // แล้วตัวกรองจำนวนเที่ยว/จำนวนวันใน .or() จะให้ผลผิดแบบเงียบ ๆ
     case 'gte':
-      return (r) => String(r[col] ?? '') >= val
+      return (r) => r[col] !== null && r[col] !== undefined && cmp(r[col], val) >= 0
     case 'lte':
-      return (r) => String(r[col] ?? '') <= val
+      return (r) => r[col] !== null && r[col] !== undefined && cmp(r[col], val) <= 0
     default:
       return () => true
   }
@@ -313,8 +342,14 @@ async function applyUpdate(table: string, patch: Row, filters: Filter[]): Promis
   return hits
 }
 
-// ------------------------------------------------------- สูตรจัดอันดับ
+// ------------------------------------------------------- จัดอันดับ
 
+/**
+ * เรียงด้วยข้อมูลจริงหลายชั้น ไม่มีคะแนนผสมสูตรเดียว — จำลอง search_drivers()
+ * ใน supabase/migrations/0009_search_drivers_real_signals.sql
+ * (เวอร์ชันก่อนหน้าเคยผสมคะแนนคุณภาพงาน/ตรงเวลาที่ไม่มีข้อมูลจริงรองรับเข้าไปด้วย
+ * ตัดทิ้งเพราะเป็นค่าที่มโนขึ้นเอง ไม่ใช่ข้อมูลจริงจากผู้ใช้)
+ */
 async function searchDrivers(p: {
   p_customer_code?: string | null
   p_vehicle_type_code?: string | null
@@ -339,44 +374,43 @@ async function searchDrivers(p: {
   }
 
   const rows = dir
-    .filter((d) => d.status === 'active')
+    .filter((d) => d.status === 'active' || d.status === 'probation')
     .map((d) => {
       const e = byDriver.get(String(d.id)) ?? { c: 0, v: 0, r: 0 }
-      const days = d.days_since_last_job as number | null
-      const adjusted = d.adjusted_score as number | null
-      const problems = (d.recent_problem_jobs as number) ?? 0
-
-      // สูตรเดียวกับ search_drivers() ใน 0003_views_and_search.sql
-      const fit =
-        40 * ((adjusted ?? 3.5) / 5) +
-        20 * 0.8 +
-        15 * Math.min(Math.log(e.c + 1) / Math.log(21), 1) +
-        10 * Math.min(Math.log(e.v + 1) / Math.log(21), 1) +
-        10 * Math.min(Math.log(e.r + 1) / Math.log(11), 1) +
-        5 * (days === null ? 0 : days <= 30 ? 1 : days <= 90 ? 0.6 : days <= 180 ? 0.3 : 0) -
-        Math.min(problems * 10, 30)
-
       return {
         driver_id: d.id,
         driver_code: d.driver_code,
         full_name: d.full_name,
         phone: d.phone,
-        total_jobs: d.total_jobs ?? 0,
+        total_jobs: (d.total_jobs as number) ?? 0,
         customer_jobs: e.c,
         vehicle_type_jobs: e.v,
         route_jobs: e.r,
-        adjusted_score: adjusted,
-        rating_count: d.rating_count ?? 0,
-        last_job_date: d.last_job_date,
-        fit_score: Math.round(fit * 10) / 10,
+        adjusted_score: d.adjusted_score as number | null,
+        rating_count: (d.rating_count as number) ?? 0,
+        last_job_date: d.last_job_date as string | null,
+        _problems: (d.recent_problem_jobs as number) ?? 0,
       }
     })
-    .sort(
-      (a, b) =>
-        (b.fit_score as number) - (a.fit_score as number) ||
-        (b.total_jobs as number) - (a.total_jobs as number),
-    )
+    .sort((a, b) => {
+      const problems = a._problems - b._problems
+      if (problems !== 0) return problems
+      const hasRating = Number(b.rating_count > 0) - Number(a.rating_count > 0)
+      if (hasRating !== 0) return hasRating
+      const rating = (b.adjusted_score ?? -1) - (a.adjusted_score ?? -1)
+      if (rating !== 0) return rating
+      const customer = b.customer_jobs - a.customer_jobs
+      if (customer !== 0) return customer
+      const vtype = b.vehicle_type_jobs - a.vehicle_type_jobs
+      if (vtype !== 0) return vtype
+      const route = b.route_jobs - a.route_jobs
+      if (route !== 0) return route
+      const total = b.total_jobs - a.total_jobs
+      if (total !== 0) return total
+      return String(b.last_job_date ?? '').localeCompare(String(a.last_job_date ?? ''))
+    })
     .slice(0, p.p_limit ?? 25)
+    .map(({ _problems: _, ...row }) => row)
 
   return { data: rows, error: null }
 }

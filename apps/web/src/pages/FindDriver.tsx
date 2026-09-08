@@ -243,19 +243,24 @@ export default function FindDriver() {
                   <th className="right">อันดับ</th>
                   <th>พขร.</th>
                   <th>เบอร์โทร</th>
-                  <th className="right">เที่ยวรวม</th>
-                  {submitted?.customer && <th className="right">เที่ยวลูกค้านี้</th>}
-                  {submitted?.vehicleType && <th className="right">เที่ยวรถแบบนี้</th>}
-                  {submitted?.route.trim() && <th className="right">เที่ยวเส้นนี้</th>}
+                  <th className="right">จำนวนเที่ยวรวมทุกลูกค้า</th>
+                  {submitted?.customer && (
+                    <th className="right">จำนวนเที่ยวที่วิ่งให้ {submitted.customer}</th>
+                  )}
+                  {submitted?.vehicleType && (
+                    <th className="right">จำนวนเที่ยวที่วิ่งรถแบบ {submitted.vehicleType}</th>
+                  )}
+                  {submitted?.route.trim() && (
+                    <th className="right">จำนวนเที่ยวที่วิ่งเส้นทาง &ldquo;{submitted.route.trim()}&rdquo;</th>
+                  )}
                   <th className="right">คะแนน</th>
                   <th>งานล่าสุด</th>
-                  <th className="right">ความเหมาะสม</th>
                 </tr>
               </thead>
               <tbody>
                 {results.data.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="empty">
+                    <td colSpan={8} className="empty">
                       ไม่พบ พขร. ที่ผ่านเงื่อนไข
                     </td>
                   </tr>
@@ -304,11 +309,6 @@ export default function FindDriver() {
                     <td className="nowrap mono" style={{ fontSize: 11.5 }}>
                       {fmtDateShort(r.last_job_date)}
                     </td>
-                    <td className="right">
-                      <span className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>
-                        {Number(r.fit_score).toFixed(1)}
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -316,13 +316,9 @@ export default function FindDriver() {
           </div>
 
           <div className="note-box" style={{ marginTop: 16 }}>
-            <strong>อ่านคะแนนความเหมาะสมอย่างไร</strong> — เต็ม 100 ประกอบด้วย คุณภาพงาน 40 ·
-            ตรงเวลา 20 · ความคุ้นเคยกับลูกค้ารายนี้ 15 · ประเภทรถ 10 · เส้นทาง 10 ·
-            ความสดของข้อมูล 5 แล้วหักครั้งละ 10 ต่อเหตุใน 12 เดือนที่ผ่านมา
-            <br />
-            ตอนนี้ยังไม่มีคะแนนรีวิวในระบบ ส่วนคุณภาพงานจึงใช้ค่ากลางเท่ากันทุกคน
-            อันดับช่วงแรกจึงตัดสินด้วยประสบการณ์ตรงสายเป็นหลัก
-            และจะแม่นขึ้นเรื่อย ๆ เมื่อเริ่มให้คะแนน
+            <strong>อ่านลำดับอย่างไร</strong> — เรียงจากข้อมูลจริงเท่านั้น ไม่มีคะแนนผสมสูตรที่มโนขึ้นเอง:
+            ตัดคนที่เคยมีปัญหา (ไม่มารับงาน/มีเหตุ) ใน 12 เดือนล่าสุดไว้ท้ายก่อน จากนั้นให้คนที่มีคะแนนรีวิวจริงจากผู้ใช้แล้วขึ้นก่อนคนที่ยังไม่มีข้อมูล
+            แล้วเรียงตามประสบการณ์ตรงกับงานนี้ (ลูกค้า/ประเภทรถ/เส้นทางที่ระบุ) ตามด้วยประสบการณ์รวมและความสดของงานล่าสุด
           </div>
         </>
       )}

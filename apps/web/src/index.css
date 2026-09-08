@@ -533,6 +533,28 @@ h3 {
 .muted {
   color: var(--muted);
 }
+
+/*
+ * ลิงก์ย้อนกลับ (เช่น "← รายชื่อ พขร." บนหน้าโปรไฟล์) — เดิมใช้แค่ตัวหนังสือสีเทา
+ * กับ "muted" ทำให้กลืนไปกับข้อความทั่วไป มองไม่ออกว่ากดได้ ปรับให้เป็นปุ่มเล็ก ๆ
+ * มีกรอบพื้นหลังตอน hover เหมือน .nav a เพื่อให้เห็นชัดว่าเป็นปุ่มกดย้อนกลับ
+ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 6px 10px 6px 8px;
+  border-radius: var(--r);
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.back-link:hover {
+  background: var(--surface-2);
+  color: var(--brand-strong);
+  text-decoration: none;
+}
 .mono {
   font-family: var(--f-mono);
   font-size: 0.88em;
@@ -581,6 +603,18 @@ h3 {
 }
 .filters-row > * {
   min-width: 0;
+}
+/*
+ * จอแคบเรียงช่องกรองลงเป็นแนวตั้ง — ต้องล้าง flex-basis ที่หน้าต่าง ๆ เขียนไว้เป็น
+ * inline style สำหรับสัดส่วนแนวนอน (เช่น flex: 1 1 220px) เพราะพอแกนหลักเปลี่ยน
+ * เป็นแนวตั้ง ค่า 220px นั้นจะกลายเป็น "ความสูงขั้นต่ำ" ของช่องกรองแต่ละช่องแทน
+ * ทำให้การ์ดตัวกรองสูงผิดปกติและมีช่องว่างโหว่คั่นระหว่างช่อง (เห็นชัดในหน้า
+ * บันทึกกิจกรรม รายชื่อ พขร. และหาคนสำหรับงาน บนมือถือ)
+ */
+@media (max-width: 759.98px) {
+  .filters-row > * {
+    flex: 0 0 auto !important;
+  }
 }
 @media (min-width: 760px) {
   .filters-row {
@@ -1061,6 +1095,11 @@ th[aria-sort] .arrow {
 @media (min-width: 680px) {
   .stats {
     grid-template-columns: repeat(4, 1fr);
+  }
+  /* หน้าโปรไฟล์ พขร. เหลือ 3 การ์ดสถิติหลังตัดค่าจ้างสะสมออก — ไม่งั้นจะเหลือ
+     ช่องว่างเปล่าตำแหน่งที่ 4 ของกริดที่ล็อกไว้ 4 คอลัมน์ */
+  .stats.stats-3 {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 .stat {

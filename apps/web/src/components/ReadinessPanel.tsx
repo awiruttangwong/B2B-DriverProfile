@@ -11,7 +11,7 @@ import { IconStar } from './icons'
  *      ที่ระดับเดียวกัน ซึ่งไม่จริง
  *   2. เลข 114 ลอย ๆ ไม่บอกอะไร แต่ "114 จาก 1,289 = 8.8%" บอกทันทีว่า
  *      คนที่ใช้งานได้จริงมีน้อยมากเมื่อเทียบกับรายชื่อทั้งหมด
- *   3. งานรอให้คะแนนไม่ใช่ "สถิติ" แต่เป็น "งานค้างที่ต้องทำ" คนละบทบาทกัน
+ *   3. คนที่รอประเมินไม่ใช่ "สถิติ" แต่เป็น "งานค้างที่ต้องทำ" คนละบทบาทกัน
  *      จึงแยกออกมาเป็นบล็อกที่มีปุ่มให้กดไปทำต่อ
  *
  * รูปแบบที่ใช้: อัตราส่วนเทียบเพดานควรเป็น meter ไม่ใช่ตัวเลขเดี่ยว
@@ -22,8 +22,10 @@ interface Props {
   total: number | undefined
   regular: number | undefined
   recent: number | undefined
-  totalJobs: number | undefined
+  /** คนที่ควรประเมินก่อนและยังไม่ได้ประเมิน */
   pending: number | undefined
+  /** คนที่ควรประเมินก่อนทั้งหมด — เป็นตัวหารของแถบความคืบหน้า */
+  priorityAll: number | undefined
   loading?: boolean
 }
 
@@ -70,8 +72,8 @@ export default function ReadinessPanel({
   total,
   regular,
   recent,
-  totalJobs,
   pending,
+  priorityAll,
   loading,
 }: Props) {
   if (loading || total === undefined) {
@@ -90,9 +92,9 @@ export default function ReadinessPanel({
     )
   }
 
-  const jobs = totalJobs ?? 0
   const waiting = pending ?? 0
-  const rated = Math.max(0, jobs - waiting)
+  const scope = priorityAll ?? 0
+  const reviewed = Math.max(0, scope - waiting)
 
   return (
     <div className="card readiness" style={{ marginBottom: 18 }}>
@@ -121,24 +123,25 @@ export default function ReadinessPanel({
         </p>
       </section>
 
-      {/* ---------------------------------------- ความคืบหน้าการให้คะแนน */}
+      {/* ---------------------------------------- ความคืบหน้าการประเมิน */}
       <section>
         <Meter
-          label="เที่ยวที่ให้คะแนนแล้ว"
-          value={rated}
-          of={jobs}
-          tone={rated === 0 ? 'warn' : undefined}
+          label="ประเมินแล้ว"
+          sub="เฉพาะคนที่ควรประเมินก่อน"
+          value={reviewed}
+          of={scope}
+          tone={reviewed === 0 ? 'warn' : undefined}
         />
 
         <p className="coverage-note">
-          {rated === 0 ? (
+          {reviewed === 0 ? (
             <>
-              ยังไม่มีการให้คะแนนเลยสักเที่ยว การจัดอันดับตอนนี้จึงตัดสินด้วยประสบการณ์อย่างเดียว
-              คะแนนคุณภาพยังใช้ค่ากลางเท่ากันทุกคน
+              ยังไม่มีการประเมินคนขับเลยสักคน การจัดอันดับตอนนี้จึงตัดสินด้วยประสบการณ์อย่างเดียว
+              ยังไม่มีคะแนนคุณภาพมาแยกคนเก่งออกจากคนที่ยังไม่รู้ฝีมือ
             </>
           ) : (
             <>
-              เหลืออีก {fmtNum(waiting)} เที่ยวที่ยังไม่มีใครให้คะแนน
+              เหลืออีก {fmtNum(waiting)} คนที่ยังไม่เคยได้รับการประเมิน
               ยิ่งค้างมาก การจัดอันดับยิ่งอาศัยประสบการณ์มากกว่าคุณภาพ
             </>
           )}
@@ -147,7 +150,7 @@ export default function ReadinessPanel({
         <div style={{ marginTop: 14 }}>
           <Link to="/pending" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
             <IconStar size={14} />
-            {rated === 0 ? 'เริ่มให้คะแนนงานแรก' : 'ไปให้คะแนนงานที่ค้าง'}
+            {reviewed === 0 ? 'เริ่มประเมินคนแรก' : 'ไปประเมินคนที่ค้าง'}
           </Link>
         </div>
       </section>

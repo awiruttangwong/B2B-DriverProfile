@@ -41,6 +41,8 @@ interface Props {
   driverName: string
   current: DriverStatus
   currentReason: string | null
+  /** เปิดมาแล้วเลือกสถานะนี้ไว้ล่วงหน้า — ใช้กับปุ่ม "ย้อนกลับ" จากประวัติ */
+  initialNext?: DriverStatus
   onClose: () => void
 }
 
@@ -49,10 +51,11 @@ export default function StatusDialog({
   driverName,
   current,
   currentReason,
+  initialNext,
   onClose,
 }: Props) {
   const qc = useQueryClient()
-  const [next, setNext] = useState<DriverStatus>(current)
+  const [next, setNext] = useState<DriverStatus>(initialNext ?? current)
   const [reason, setReason] = useState(currentReason ?? '')
   const [err, setErr] = useState<string | null>(null)
 
