@@ -346,7 +346,8 @@ async function applyUpdate(table: string, patch: Row, filters: Filter[]): Promis
 
 /**
  * เรียงด้วยข้อมูลจริงหลายชั้น ไม่มีคะแนนผสมสูตรเดียว — จำลอง search_drivers()
- * ใน supabase/migrations/0009_search_drivers_real_signals.sql
+ * ใน supabase/migrations/0012_ranking_quality_gate.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
+ * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง)
  * (เวอร์ชันก่อนหน้าเคยผสมคะแนนคุณภาพงาน/ตรงเวลาที่ไม่มีข้อมูลจริงรองรับเข้าไปด้วย
  * ตัดทิ้งเพราะเป็นค่าที่มโนขึ้นเอง ไม่ใช่ข้อมูลจริงจากผู้ใช้)
  */
@@ -395,16 +396,19 @@ async function searchDrivers(p: {
     .sort((a, b) => {
       const problems = a._problems - b._problems
       if (problems !== 0) return problems
-      const hasRating = Number(b.rating_count > 0) - Number(a.rating_count > 0)
-      if (hasRating !== 0) return hasRating
-      const rating = (b.adjusted_score ?? -1) - (a.adjusted_score ?? -1)
-      if (rating !== 0) return rating
+      // คะแนนต่ำกว่า 3 ถูกกดลงท้าย ส่วนคนที่ยังไม่เคยประเมิน (null) ไม่ถือว่าแย่
+      const low = (x: { adjusted_score: number | null }) =>
+        Number(x.adjusted_score !== null && x.adjusted_score < 3)
+      const lowRank = low(a) - low(b)
+      if (lowRank !== 0) return lowRank
       const customer = b.customer_jobs - a.customer_jobs
       if (customer !== 0) return customer
       const vtype = b.vehicle_type_jobs - a.vehicle_type_jobs
       if (vtype !== 0) return vtype
       const route = b.route_jobs - a.route_jobs
       if (route !== 0) return route
+      const rating = (b.adjusted_score ?? -1) - (a.adjusted_score ?? -1)
+      if (rating !== 0) return rating
       const total = b.total_jobs - a.total_jobs
       if (total !== 0) return total
       return String(b.last_job_date ?? '').localeCompare(String(a.last_job_date ?? ''))

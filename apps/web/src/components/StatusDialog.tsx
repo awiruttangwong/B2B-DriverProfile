@@ -4,8 +4,6 @@ import { supabase } from '../lib/supabase'
 import type { DriverStatus } from '../types/database'
 import { STATUS_LABEL } from '../lib/format'
 
-const MIN_REASON = 10
-
 /** สถานะที่ทำให้ พขร. หายจากหน้าหาคนสำหรับงาน จึงต้องกรอกเหตุผล */
 export const BLOCKING: DriverStatus[] = ['inactive', 'blacklisted']
 
@@ -60,9 +58,9 @@ export default function StatusDialog({
   const [err, setErr] = useState<string | null>(null)
 
   const needsReason = BLOCKING.includes(next)
-  const reasonLen = reason.trim().length
   const changed = next !== current
-  const canSave = changed && (!needsReason || reasonLen >= MIN_REASON)
+  // ไม่จำกัดความยาวขั้นต่ำ — บังคับแค่ห้ามว่าง ความยาวเท่าไรก็เขียนได้
+  const canSave = changed && (!needsReason || reason.trim().length > 0)
 
   const save = useMutation({
     mutationFn: async () => {
@@ -186,11 +184,6 @@ export default function StatusDialog({
                 style={{ minHeight: 76 }}
                 placeholder="เช่น ทำสินค้าเสียหาย 3 ครั้งใน 2 เดือน ลูกค้า OFM ขอไม่ให้ส่งคนนี้อีก"
               />
-              <div className={`hint ${reasonLen > 0 && reasonLen < MIN_REASON ? 'err' : ''}`}>
-                {reasonLen < MIN_REASON
-                  ? `อีก ${MIN_REASON - reasonLen} ตัวอักษร — สถานะนี้ตัดคนออกจากการรับงาน ต้องอธิบายได้ว่าทำไม`
-                  : `${reasonLen} ตัวอักษร`}
-              </div>
             </div>
           )}
 
@@ -233,8 +226,7 @@ export default function StatusDialog({
 }
 
 function translate(msg: string): string {
-  if (msg.includes('drivers_status_reason_required'))
-    return `สถานะนี้ต้องมีเหตุผลอย่างน้อย ${MIN_REASON} ตัวอักษร`
+  if (msg.includes('drivers_status_reason_required')) return 'สถานะนี้ต้องระบุเหตุผล'
   if (msg.includes('row-level security') || msg.includes('violates row-level'))
     return 'ไม่มีสิทธิ์เปลี่ยนสถานะ — ต้องเป็น ops, hr หรือ admin'
   return msg

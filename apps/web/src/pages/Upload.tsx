@@ -18,10 +18,14 @@ import {
   type SheetScan,
 } from '../lib/sourceProfiles'
 import { downloadJobTemplate } from '../lib/template'
+import type { WorkerResult } from '../lib/xlsxWorker'
 import { fmtDateShort, fmtMoney, fmtNum } from '../lib/format'
 import { IconDownload, IconFile, IconUpload } from '../components/icons'
 
 type Stage = 'idle' | 'reading' | 'preview' | 'importing' | 'done'
+
+/** สร้างเธรดแยกไม่ได้ (เบราว์เซอร์เก่า/ถูกนโยบายบล็อก) — ไม่ใช่ไฟล์เสีย */
+class WorkerUnavailable extends Error {}
 
 /** คอลัมน์ที่อยากให้ผู้ใช้เห็นว่าจับคู่ได้หรือไม่ ไม่ต้องโชว์ครบทุกฟิลด์ */
 const SHOWN_FIELDS: Field[] = [
@@ -80,6 +84,58 @@ export default function Upload() {
     }
   }
 
+  /**
+   * แกะไฟล์ Excel ในเธรดแยก เพื่อไม่ให้หน้าจอค้างระหว่างอ่านไฟล์ใหญ่
+   *
+   * ไฟล์จริงขนาด 9.4 MB เคยบล็อกเธรดหลักยาว 5,978 มิลลิวินาทีเป็นเฟรมเดียว
+   * (วัดด้วย requestAnimationFrame บนเบราว์เซอร์จริง) หน้าจึงเหมือนค้างไปเฉย ๆ
+   *
+   * ถ้าสร้างเธรดแยกไม่ได้ (เบราว์เซอร์เก่า/ถูกบล็อก) จะถอยไปแกะบนเธรดหลักแบบเดิม
+   * ให้ยังนำเข้าได้ ไม่ปล่อยให้ล้มทั้งงานเพราะเรื่องประสิทธิภาพ
+   */
+  async function readWorkbook(file: File): Promise<{ name: string; rows: unknown[][] }[]> {
+    try {
+      const worker = new Worker(new URL('../lib/xlsxWorker.ts', import.meta.url), {
+        type: 'module',
+      })
+      const buf = await file.arrayBuffer()
+      return await new Promise((resolve, reject) => {
+        worker.onmessage = (e: MessageEvent<WorkerResult>) => {
+          worker.terminate()
+          if (e.data.ok) resolve(e.data.sheets)
+          // ไฟล์เสียจริง ไม่ใช่ปัญหาของเธรด — โยนต่อเลย ไม่ต้องแกะซ้ำให้เสียเวลา
+          else reject(new Error(e.data.error))
+        }
+        worker.onerror = () => {
+          worker.terminate()
+          reject(new WorkerUnavailable())
+        }
+        worker.postMessage({ buf }, [buf])
+      })
+    } catch (err) {
+      if (!(err instanceof WorkerUnavailable)) throw err
+      // cellDates: false + raw: true ทำให้วันที่มาเป็นเลข serial ของ Excel
+      // และตัวเลขมาเป็น number ซึ่งแปลงได้โดยไม่ผ่านเขตเวลาและไม่ผ่านรูปแบบการแสดงผล
+      // ถ้าปล่อยให้เป็นสตริงตามรูปแบบในไฟล์ วันที่จะเลื่อนไป 1 วันในเขตเวลา UTC+7
+      const XLSX = await import('xlsx')
+      const wb = XLSX.read(await file.arrayBuffer(), { cellDates: false })
+      return wb.SheetNames.map((name) => {
+        const ws = wb.Sheets[name]
+        return {
+          name,
+          rows: ws
+            ? XLSX.utils.sheet_to_json<unknown[]>(ws, {
+                header: 1,
+                defval: null,
+                raw: true,
+                blankrows: true,
+              })
+            : [],
+        }
+      })
+    }
+  }
+
   async function handleFile(file: File) {
     setStage('reading')
     setError(null)
@@ -87,29 +143,15 @@ export default function Upload() {
     setClean(null)
 
     try {
-      // โหลด SheetJS ตอนใช้จริงเท่านั้น ไม่ถ่วงหน้าแรก
-      const XLSX = await import('xlsx')
-      const buf = await file.arrayBuffer()
-      // cellDates: false + raw: true ทำให้วันที่มาเป็นเลข serial ของ Excel
-      // และตัวเลขมาเป็น number ซึ่งแปลงได้โดยไม่ผ่านเขตเวลาและไม่ผ่านรูปแบบการแสดงผล
-      // ถ้าปล่อยให้เป็นสตริงตามรูปแบบในไฟล์ วันที่จะเลื่อนไป 1 วันในเขตเวลา UTC+7
-      const wb = XLSX.read(buf, { cellDates: false })
-      if (wb.SheetNames.length === 0) throw new Error('ไม่พบชีตในไฟล์นี้')
+      const sheets = await readWorkbook(file)
+      if (sheets.length === 0) throw new Error('ไม่พบชีตในไฟล์นี้')
 
       // อ่านเป็นตารางดิบ (array of array) ไม่ใช่ object เพราะต้องหาแถวหัวตารางเอง
       // และหัวตารางซ้ำกันในไฟล์จริง ถ้าให้ SheetJS แปลงเป็น object คอลัมน์จะหาย
+      const byName = new Map(sheets.map((s) => [s.name, s.rows]))
       const found = scanSheets(
-        wb.SheetNames,
-        (name) => {
-          const ws = wb.Sheets[name]
-          if (!ws) return []
-          return XLSX.utils.sheet_to_json<unknown[]>(ws, {
-            header: 1,
-            defval: null,
-            raw: true,
-            blankrows: true,
-          })
-        },
+        sheets.map((s) => s.name),
+        (name) => byName.get(name) ?? [],
         isUsableRow,
       )
 

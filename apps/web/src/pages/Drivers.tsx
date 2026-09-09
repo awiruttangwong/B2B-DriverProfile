@@ -196,21 +196,21 @@ export default function Drivers() {
       const dir = () =>
         supabase.from('driver_directory').select('id', { count: 'exact' }).limit(1)
 
-      const [all, regular, recent, pending, priorityAll] = await Promise.all([
+      // เงื่อนไข "ยังวิ่งงานอยู่ใน 90 วันล่าสุด" ต้องตรงกับค่าเริ่มต้นของหน้า /pending
+      // และตัวเลขบนเมนูเสมอ ไม่งั้นตัวเลขจะไม่ตรงกันข้ามหน้า
+      const [all, regular, recent, pending, scopeAll] = await Promise.all([
         dir().eq('status', 'active'),
         dir().eq('status', 'active').gte('total_jobs', 10),
         dir().eq('status', 'active').lte('days_since_last_job', 30),
         supabase
           .from('drivers_pending_review')
           .select('id', { count: 'exact' })
-          .eq('is_priority', true)
+          .lte('days_since_last_job', 90)
           .limit(1),
-        // ตัวหารของแถบความคืบหน้า ต้องเป็นกลุ่มเดียวกับตัวตั้ง (คนที่ควรประเมิน
-        // ทั้งหมด ไม่ว่าประเมินไปแล้วหรือยัง) ไม่ใช่ พขร. ทั้งระบบ ไม่งั้นคนที่
+        // ตัวหารของแถบความคืบหน้า ต้องเป็นกลุ่มเดียวกับตัวตั้ง (คนที่ยังวิ่งอยู่ใน
+        // 90 วัน ทั้งหมด ไม่ว่าประเมินไปแล้วหรือยัง) ไม่ใช่ พขร. ทั้งระบบ ไม่งั้นคนที่
         // "ยังไม่ประเมินแต่ไม่เข้าเกณฑ์" จะถูกนับเป็นประเมินแล้วโดยอัตโนมัติ
-        dir()
-          .in('status', ['active', 'probation'])
-          .or('total_jobs.gte.10,days_since_last_job.lte.90'),
+        dir().in('status', ['active', 'probation']).lte('days_since_last_job', 90),
       ])
 
       return {
@@ -218,7 +218,7 @@ export default function Drivers() {
         regular: regular.count ?? 0,
         recent: recent.count ?? 0,
         pending: pending.count ?? 0,
-        priorityAll: priorityAll.count ?? 0,
+        scopeAll: scopeAll.count ?? 0,
       }
     },
   })
@@ -299,7 +299,7 @@ export default function Drivers() {
         regular={kpi.data?.regular}
         recent={kpi.data?.recent}
         pending={kpi.data?.pending}
-        priorityAll={kpi.data?.priorityAll}
+        scopeAll={kpi.data?.scopeAll}
         loading={kpi.isLoading}
       />
 

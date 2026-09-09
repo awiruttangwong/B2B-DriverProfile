@@ -328,21 +328,38 @@ async function findRevisedTrips(
     cost: number | null
   }
 
-  const existing: Hist[] = []
-  for (const part of chunk(ids, 200)) {
-    for (const dpart of chunk(dates, 200)) {
+  /*
+   * ยิงทีละก้อนของ พขร. โดยคุมวันที่ด้วย "ช่วงวันที่" ไม่ใช่รายการวันทีละก้อน
+   *
+   * ของเดิมวนสองชั้น (ก้อน พขร. × ก้อนวันที่) ซึ่งเป็นผลคูณไขว้ พอเป็นการนำเข้า
+   * ไฟล์ประวัติทั้งก้อน (พขร. 1,290 คน × ~500 วัน) จะกลายเป็น 7 × 3 = 21 คำสั่ง
+   * ที่รอกันเป็นทอด ๆ คำสั่งละ ~88 มิลลิวินาทีที่ฐานข้อมูล บวกเวลาเดินทางอีกเส้นละ
+   * ~150 มิลลิวินาที รวมแล้วผู้ใช้รอเปล่า ๆ ราว 5 วินาที
+   *
+   * ใช้ช่วง min..max ของวันที่แทน ได้ผลลัพธ์ครอบคลุมเท่าเดิม (กว้างกว่าเล็กน้อย)
+   * แล้วปล่อยให้ byKey ข้างล่างคัดตรง ๆ อยู่แล้ว — เหลือ 7 คำสั่ง และยิงพร้อมกันได้
+   */
+  const sortedDates = [...dates].sort()
+  const minDate = sortedDates[0]!
+  const maxDate = sortedDates[sortedDates.length - 1]!
+
+  const parts = await Promise.all(
+    chunk(ids, 200).map(async (part) => {
       const { data, error } = await supabase
         .from('driver_job_history')
         .select('job_id, driver_id, job_date, route_raw, plate, revenue, cost')
         .in('driver_id', part)
-        .in('job_date', dpart)
-      if (error) {
-        report.errors.push(`ตรวจเที่ยวที่ถูกแก้: ${error.message}`)
-        return []
-      }
-      existing.push(...((data ?? []) as Hist[]))
-    }
-  }
+        .gte('job_date', minDate)
+        .lte('job_date', maxDate)
+      if (error) throw new Error(error.message)
+      return (data ?? []) as Hist[]
+    }),
+  ).catch((err: Error) => {
+    report.errors.push(`ตรวจเที่ยวที่ถูกแก้: ${err.message}`)
+    return null
+  })
+  if (parts === null) return []
+  const existing: Hist[] = parts.flat()
   if (existing.length === 0) return []
 
   const key = (driverId: string, date: string, route: string | null) =>

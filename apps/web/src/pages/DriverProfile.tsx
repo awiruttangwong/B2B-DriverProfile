@@ -335,7 +335,7 @@ export default function DriverProfile() {
                     <th>วันที่</th>
                     <th>ลูกค้า</th>
                     <th>เส้นทาง</th>
-                    <th>รถ</th>
+                    <th>ประเภทรถ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -456,12 +456,12 @@ export default function DriverProfile() {
             <div className="empty">ยังไม่มีข้อมูล</div>
           ) : (
             <div className="tablewrap" style={{ border: 0, borderRadius: 0 }}>
-              <table style={{ minWidth: 320 }}>
+              <table className="table-compact table-center">
                 <thead>
                   <tr>
                     <th>ลูกค้า</th>
-                    <th className="right">จำนวนเที่ยวที่วิ่งกับลูกค้า</th>
-                    <th>ล่าสุด</th>
+                    <th>จำนวนเที่ยวที่วิ่งกับลูกค้า</th>
+                    <th>วิ่งงานล่าสุด</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -470,7 +470,7 @@ export default function DriverProfile() {
                       <td>
                         <span className="badge">{p.customer_code}</span>
                       </td>
-                      <td className="right num">{p.jobs}</td>
+                      <td className="num">{p.jobs}</td>
                       <td className="nowrap mono" style={{ fontSize: 11.5 }}>
                         {fmtDateShort(p.last_job_date)}
                       </td>
@@ -483,7 +483,7 @@ export default function DriverProfile() {
           <div className="card-pad">
             <p className="hint" style={{ margin: 0 }}>
               ตารางนี้คือคำตอบของ “คนไหนเหมาะกับงานไหน” — จำนวนเที่ยวบอกความคุ้นเคยกับลูกค้ารายนี้
-              ดูคะแนนคุณภาพเป็นรายงานได้ที่ตาราง “ประวัติงาน” ด้านซ้าย
+              ส่วนคะแนนคุณภาพเป็นการประเมินภาพรวมทั้งคน ดูได้ที่ด้านบนของหน้า
             </p>
           </div>
         </div>

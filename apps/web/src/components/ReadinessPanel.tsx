@@ -22,10 +22,10 @@ interface Props {
   total: number | undefined
   regular: number | undefined
   recent: number | undefined
-  /** คนที่ควรประเมินก่อนและยังไม่ได้ประเมิน */
+  /** คนที่ยังวิ่งงานอยู่ใน 90 วันล่าสุดและยังไม่ได้ประเมิน */
   pending: number | undefined
-  /** คนที่ควรประเมินก่อนทั้งหมด — เป็นตัวหารของแถบความคืบหน้า */
-  priorityAll: number | undefined
+  /** คนที่ยังวิ่งงานอยู่ใน 90 วันล่าสุดทั้งหมด — เป็นตัวหารของแถบความคืบหน้า */
+  scopeAll: number | undefined
   loading?: boolean
 }
 
@@ -73,7 +73,7 @@ export default function ReadinessPanel({
   regular,
   recent,
   pending,
-  priorityAll,
+  scopeAll,
   loading,
 }: Props) {
   if (loading || total === undefined) {
@@ -93,7 +93,7 @@ export default function ReadinessPanel({
   }
 
   const waiting = pending ?? 0
-  const scope = priorityAll ?? 0
+  const scope = scopeAll ?? 0
   const reviewed = Math.max(0, scope - waiting)
 
   return (
@@ -127,7 +127,7 @@ export default function ReadinessPanel({
       <section>
         <Meter
           label="ประเมินแล้ว"
-          sub="เฉพาะคนที่ควรประเมินก่อน"
+          sub="เฉพาะคนที่ยังวิ่งงานอยู่ใน 90 วันล่าสุด"
           value={reviewed}
           of={scope}
           tone={reviewed === 0 ? 'warn' : undefined}

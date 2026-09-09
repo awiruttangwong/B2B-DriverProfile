@@ -14,18 +14,53 @@ interface TargetDriver {
   full_name: string
 }
 
+/**
+ * ตัวกรองคิวรอประเมิน — แยกเป็นสองแกนที่ตอบคนละคำถาม
+ *
+ *   จำนวนเที่ยว   = คนนี้วิ่งมามากแค่ไหน (ประสบการณ์)
+ *   วิ่งงานล่าสุด = คนนี้ยังทำงานอยู่ไหม (ความสด)
+ *
+ * ต้องเลือกพร้อมกันได้ เพราะรายการที่มีค่าที่สุดของหน้านี้เกิดจากการรวมสองแกน
+ * เช่น "วิ่งเกิน 20 เที่ยว + ยังวิ่งอยู่ใน 30 วัน" = 15 คน (วัดจริงบน production)
+ * คือคนวิ่งเยอะที่กำลังทำงานอยู่แต่ยังไม่มีใครรู้ฝีมือ ถ้ายุบเป็นรายการเดียว
+ * จะเลือกแบบนี้ไม่ได้เลย
+ *
+ * ไม่มีตัวเลือก "วิ่งใน 7 วัน" เพราะข้อมูลงานมาจากการอัปโหลดไฟล์เป็นรอบ ไม่ใช่
+ * ข้อมูลสด (งานล่าสุดในระบบเก่ากว่าวันนี้ 9 วันตอนที่วัด) ตัวกรองช่วงสั้นกว่านั้น
+ * จะวัด "เราอัปโหลดไฟล์ล่าสุดเมื่อไร" แทนที่จะวัด "ใครยังวิ่งอยู่" แล้วขึ้นหน้าว่าง
+ *
+ * ค่าเริ่มต้นของช่อง "วิ่งงานล่าสุด" คือ 90 วัน ให้ตรงกับตัวเลขบนเมนูและหน้ารายชื่อ
+ * พขร. — ทั้งสามจุดต้องอิงเงื่อนไขเดียวกันเสมอ ไม่งั้นตัวเลขจะไม่ตรงกันข้ามหน้า
+ */
+const JOB_OPTIONS = [
+  { value: '', label: 'ไม่จำกัด' },
+  { value: '10', label: 'เกิน 10 เที่ยว' },
+  { value: '20', label: 'เกิน 20 เที่ยว' },
+  { value: '50', label: 'เกิน 50 เที่ยว' },
+  { value: '100', label: 'เกิน 100 เที่ยว' },
+]
+
+const DAY_OPTIONS = [
+  { value: '', label: 'ไม่จำกัด' },
+  { value: '30', label: 'ใน 30 วันล่าสุด' },
+  { value: '90', label: 'ใน 90 วันล่าสุด' },
+  { value: '180', label: 'ใน 180 วันล่าสุด' },
+]
+
 export default function PendingRatings() {
   const { can } = useAuth()
   const [page, setPage] = useState(0)
   const [target, setTarget] = useState<TargetDriver | null>(null)
   const [q, setQ] = useState('')
-  // ค่าเริ่มต้นโชว์เฉพาะคนที่มีผลต่องานจริง — พขร. ที่ยังไม่เคยประเมินมี 1,290 คน
-  // แต่ 721 คน (56%) วิ่งแค่เที่ยวเดียวตลอดกาล ถ้าไล่ให้ครบทุกคนก็กลับไปเป็น
-  // คิวที่ไม่มีวันหมดเหมือนตอนให้คะแนนรายเที่ยว
-  const [onlyPriority, setOnlyPriority] = useState(true)
+
+  // ค่าเริ่มต้น = ยังวิ่งงานอยู่ใน 90 วันล่าสุด (ตรงกับตัวเลขบนเมนูและหน้ารายชื่อ พขร.)
+  // ไม่ผูกกับจำนวนเที่ยวเลย เพราะคนที่เพิ่งเริ่มวิ่งแล้วยังไม่มีใครรู้ฝีมือควรถูกเห็น
+  // ตั้งแต่แรกเหมือนกับคนที่วิ่งมานาน
+  const [minJobs, setMinJobs] = useState('')
+  const [maxDays, setMaxDays] = useState('90')
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['pending', page, onlyPriority],
+    queryKey: ['pending', page, minJobs, maxDays],
     queryFn: async () => {
       let query = supabase
         .from('drivers_pending_review')
@@ -33,7 +68,8 @@ export default function PendingRatings() {
         .order('total_jobs', { ascending: false })
         .range(page * PAGE, page * PAGE + PAGE - 1)
 
-      if (onlyPriority) query = query.eq('is_priority', true)
+      if (minJobs) query = query.gt('total_jobs', Number(minJobs))
+      if (maxDays) query = query.lte('days_since_last_job', Number(maxDays))
 
       const { data, error, count } = await query
       if (error) throw error
@@ -42,6 +78,21 @@ export default function PendingRatings() {
   })
 
   const pages = Math.ceil((data?.count ?? 0) / PAGE)
+
+  const pick = (which: 'jobs' | 'days', value: string) => {
+    if (which === 'jobs') setMinJobs(value)
+    else setMaxDays(value)
+    setPage(0)
+  }
+
+  // สรุปเงื่อนไขที่ใช้อยู่เป็นคำพูด ไม่ให้ผู้ใช้ต้องเดาว่าตัวเลขที่เห็นมาจากเงื่อนไขไหน
+  const activeLabel =
+    [
+      JOB_OPTIONS.find((o) => o.value === minJobs && o.value)?.label,
+      DAY_OPTIONS.find((o) => o.value === maxDays && o.value)?.label,
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'ทั้งหมด'
 
   // ค้นหาคนขับคนไหนก็ได้เพื่อประเมิน (ใช้ตอนต้องการประเมินซ้ำคนที่เคยประเมินไปแล้ว)
   const term = safeSearchTerm(q)
@@ -130,31 +181,39 @@ export default function PendingRatings() {
 
       {error && <div className="note-box err">โหลดข้อมูลไม่สำเร็จ: {(error as Error).message}</div>}
 
-      <div
-        className="row"
-        style={{ justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}
-      >
-        {data && (
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            {onlyPriority ? 'ควรประเมินก่อน' : 'ยังไม่เคยประเมินทั้งหมด'} {fmtNum(data.count)} คน
-            {pages > 1 && ` · หน้า ${page + 1} จาก ${fmtNum(pages)}`}
-          </p>
-        )}
-        <button
-          className="btn btn-sm"
-          onClick={() => {
-            setOnlyPriority(!onlyPriority)
-            setPage(0)
-          }}
-        >
-          {onlyPriority ? 'ดูทั้งหมดรวมคนที่วิ่งไม่กี่เที่ยว' : 'ดูเฉพาะคนที่ควรประเมินก่อน'}
-        </button>
+      <div className="card card-pad" style={{ marginBottom: 14 }}>
+        <div className="filters-row">
+          <div style={{ flex: '1 1 170px' }}>
+            <label htmlFor="fj">จำนวนเที่ยว</label>
+            <select id="fj" value={minJobs} onChange={(e) => pick('jobs', e.target.value)}>
+              {JOB_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: '1 1 170px' }}>
+            <label htmlFor="fd">วิ่งงานล่าสุด</label>
+            <select id="fd" value={maxDays} onChange={(e) => pick('days', e.target.value)}>
+              {DAY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+          เลือกสองช่องพร้อมกันได้ เช่น “เกิน 20 เที่ยว” คู่กับ “ใน 30 วันล่าสุด” จะได้คนวิ่งเยอะที่ยังทำงานอยู่ตอนนี้
+        </p>
       </div>
 
-      {onlyPriority && (
-        <p className="hint" style={{ marginTop: 0 }}>
-          แสดงเฉพาะคนที่วิ่งตั้งแต่ 10 เที่ยวขึ้นไป หรือยังวิ่งงานอยู่ใน 90 วันล่าสุด —
-          คนที่วิ่งไม่กี่เที่ยวแล้วหายไปนานไม่ได้ถูกลบ แค่ไม่ถูกนับเป็นงานค้าง
+      {data && (
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+          {activeLabel} — แสดง {fmtNum(data.count)} คน
+          {pages > 1 && ` · หน้า ${page + 1} จาก ${fmtNum(pages)}`}
         </p>
       )}
 
@@ -164,7 +223,7 @@ export default function PendingRatings() {
             <tr>
               <th>พขร.</th>
               <th>เบอร์โทร</th>
-              <th className="right">เที่ยววิ่งสะสม</th>
+              <th style={{ textAlign: 'center' }}>เที่ยววิ่งสะสม</th>
               <th>งานล่าสุด</th>
               <th />
             </tr>
@@ -193,7 +252,9 @@ export default function PendingRatings() {
                   </div>
                 </td>
                 <td className="mono nowrap">{fmtPhone(r.phone)}</td>
-                <td className="right num">{fmtNum(r.total_jobs)}</td>
+                <td className="num" style={{ textAlign: 'center' }}>
+                  {fmtNum(r.total_jobs)}
+                </td>
                 <td className="nowrap mono" style={{ fontSize: 12 }}>
                   {fmtDateShort(r.last_job_date)}
                 </td>

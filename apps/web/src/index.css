@@ -942,6 +942,37 @@ td.nowrap {
   white-space: nowrap;
 }
 
+/* ตารางในการ์ดแคบ เช่นคอลัมน์ขวาของหน้าโปรไฟล์ (กว้างจริงราว 415px)
+ *
+ * ตารางปกติตั้ง min-width 620px และหัวคอลัมน์ห้ามขึ้นบรรทัดใหม่ ซึ่งถูกสำหรับ
+ * ตารางเต็มความกว้าง แต่พอเอามาใส่การ์ดแคบ หัวคอลัมน์ยาว ๆ จะดันตารางจนล้น
+ * แล้วเกิดแถบเลื่อนแนวนอนซ้อนอยู่ในการ์ด ผู้ใช้ต้องเลื่อนถึงจะเห็นคอลัมน์สุดท้าย
+ *
+ * คลาสนี้ปล่อยให้หัวคอลัมน์ตัดบรรทัดได้และลดระยะขอบลง ตารางจึงยืดหดตามการ์ด
+ */
+.table-compact {
+  min-width: 0;
+}
+.table-compact th,
+.table-compact td {
+  padding: 9px 10px;
+}
+/* จัดกึ่งกลางทั้งหัวคอลัมน์และข้อมูล — ใช้กับตารางค่าสั้น ๆ ที่หัวคอลัมน์ยาวกว่าข้อมูล
+ * มาก (เช่น หัว "จำนวนเที่ยวที่วิ่งกับลูกค้า" กับค่า "5") ถ้าปล่อยให้ข้อมูลชิดขอบ
+ * ตัวเลขจะไปกองอยู่มุมเดียวของช่องที่กว้างกว่ามาก ดูไม่สมดุลกับหัวคอลัมน์
+ * แนวทางเดียวกับ .drivers-table ในหน้ารายชื่อ พขร.
+ */
+.table-center th,
+.table-center td {
+  text-align: center;
+}
+
+.table-compact thead th {
+  white-space: normal;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
 /* หัวคอลัมน์ที่กดเรียงได้ */
 th.sortable {
   cursor: pointer;
@@ -1255,6 +1286,28 @@ th[aria-sort] .arrow {
   100% {
     background-position: 0 50%;
   }
+}
+
+/* ไฮไลท์ช่องตัวกรอง "ขั้นถัดไปที่ควรกรอก" (หน้าหาคนสำหรับงาน)
+ *
+ * ช่องทั้งสามแสดงพร้อมกันเสมอ ไม่ซ่อน — แค่เน้นช่องที่เป็นขั้นถัดไปด้วยกรอบสี
+ * และจุดเล็ก ๆ ข้างป้ายชื่อ ให้เห็นลำดับที่ควรกรอกโดยไม่ต้องบังคับ ยังข้ามได้ทุกช่อง
+ */
+.filter-step-active {
+  padding: 8px 6px 10px;
+  margin: -8px -6px -10px;
+  border-radius: var(--r);
+  background: var(--brand-soft);
+  outline: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+}
+.step-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 .stars {
