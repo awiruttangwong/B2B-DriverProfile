@@ -90,6 +90,40 @@
   }
 }
 
+/* สลับธีมเองจากปุ่มในแอป ต้องชนะได้แม้ OS ตั้งเป็นสว่าง — คนละเงื่อนไขกับ
+   บล็อก prefers-color-scheme ด้านบนซึ่งอ้างอิงจาก OS เท่านั้น */
+:root[data-theme='dark'] {
+  --brand: #4fb3ee;
+  --brand-strong: #7cc9f5;
+  --brand-deep: #a5dbf9;
+  --brand-soft: #0d2c40;
+  --brand-line: #1b4864;
+  --meter-track: #12354c;
+
+  --ground: #0d151d;
+  --surface: #16202c;
+  --surface-2: #1d2937;
+  --surface-3: #263445;
+  --ink: #e6edf3;
+  --ink-2: #b9c6d3;
+  --muted: #93a4b3;
+  --line: #26333f;
+  --line-strong: #3a4a5a;
+
+  --good: #59c894;
+  --good-soft: #103123;
+  --warn: #dfae5a;
+  --warn-soft: #33270f;
+  --bad: #ef8078;
+  --bad-soft: #3a1a17;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -18px rgba(0, 0, 0, 0.9);
+  --shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, 0.8);
+
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -637,24 +671,26 @@ h3 {
 
 /* =========================================================== ความพร้อมข้อมูล */
 .readiness {
+  margin-bottom: 18px;
+}
+.readiness-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0;
-  margin-bottom: 18px;
 }
 @media (min-width: 900px) {
-  .readiness {
+  .readiness-grid {
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   }
 }
-.readiness > section {
+.readiness-grid > section {
   padding: 20px 22px;
 }
-.readiness > section + section {
+.readiness-grid > section + section {
   border-top: 1px solid var(--line);
 }
 @media (min-width: 900px) {
-  .readiness > section + section {
+  .readiness-grid > section + section {
     border-top: 0;
     border-left: 1px solid var(--line);
   }
@@ -838,7 +874,11 @@ label {
   background: var(--brand-deep);
   border-color: var(--brand-deep);
 }
-:root:not([data-theme='light']) .btn-primary {
+/* บั๊ก contrast เดิม: :not([data-theme='light']) ตรงกับสถานะ "system" ตอน OS
+   สว่างด้วย (ไม่มี data-theme เลย) ทำให้ตัวอักษรกลายเป็นสีเข้มบนพื้นสีน้ำเงิน
+   เดียวกับโหมดสว่าง เหลือ contrast แค่ ~3.1:1 อ่านไม่ออก ต้องผูกกับ data-theme
+   ที่เป็น 'dark' จริง ๆ เท่านั้น ให้ตรงเงื่อนไขเดียวกับตัวแปรสีด้านบน */
+:root[data-theme='dark'] .btn-primary {
   color: #06202e;
 }
 @media (prefers-color-scheme: dark) {

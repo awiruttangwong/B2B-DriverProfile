@@ -22,9 +22,9 @@ interface Props {
   total: number | undefined
   regular: number | undefined
   recent: number | undefined
-  /** คนที่ยังวิ่งงานอยู่ใน 90 วันล่าสุดและยังไม่ได้ประเมิน */
+  /** คนสถานะ active/probation ที่ยังไม่ได้ประเมิน */
   pending: number | undefined
-  /** คนที่ยังวิ่งงานอยู่ใน 90 วันล่าสุดทั้งหมด — เป็นตัวหารของแถบความคืบหน้า */
+  /** คนสถานะ active/probation ทั้งหมด — เป็นตัวหารของแถบความคืบหน้า */
   scopeAll: number | undefined
   loading?: boolean
 }
@@ -79,15 +79,17 @@ export default function ReadinessPanel({
   if (loading || total === undefined) {
     return (
       <div className="card readiness" style={{ marginBottom: 18 }}>
-        <section>
-          <div className="sk" style={{ width: 150, height: 46 }} />
-          <div className="sk" style={{ width: 100, height: 12, marginTop: 10 }} />
-          <div className="sk" style={{ width: '100%', height: 40, marginTop: 24 }} />
-        </section>
-        <section>
-          <div className="sk" style={{ width: 120, height: 14 }} />
-          <div className="sk" style={{ width: '100%', height: 40, marginTop: 16 }} />
-        </section>
+        <div className="readiness-grid">
+          <section>
+            <div className="sk" style={{ width: 150, height: 46 }} />
+            <div className="sk" style={{ width: 100, height: 12, marginTop: 10 }} />
+            <div className="sk" style={{ width: '100%', height: 40, marginTop: 24 }} />
+          </section>
+          <section>
+            <div className="sk" style={{ width: 120, height: 14 }} />
+            <div className="sk" style={{ width: '100%', height: 40, marginTop: 16 }} />
+          </section>
+        </div>
       </div>
     )
   }
@@ -98,62 +100,65 @@ export default function ReadinessPanel({
 
   return (
     <div className="card readiness" style={{ marginBottom: 18 }}>
-      {/* ---------------------------------------- รายชื่อ พขร. */}
-      <section>
-        <div className="hero-fig">{fmtNum(total)}</div>
-        <div className="hero-lbl">พขร. ที่ใช้งานอยู่ในระบบ</div>
+      <div className="readiness-grid">
+        {/* ---------------------------------------- รายชื่อ พขร. */}
+        <section>
+          <div className="hero-fig">{fmtNum(total)}</div>
+          <div className="hero-lbl">พขร. ที่ใช้งานอยู่ในระบบ</div>
 
-        <div className="meters">
+          <div className="meters">
+            <Meter
+              label="วิ่งประจำ"
+              sub="ตั้งแต่ 10 เที่ยวขึ้นไป"
+              value={regular ?? 0}
+              of={total}
+            />
+            <Meter
+              label="วิ่งงานใน 30 วันล่าสุด"
+              sub="พร้อมรับงานตอนนี้"
+              value={recent ?? 0}
+              of={total}
+            />
+          </div>
+
+          <p className="coverage-note">
+            พขร. ที่วิ่งต่ำกว่า 10 เที่ยวหรือไม่ได้วิ่งเกิน 30 วันแล้ว ยังประเมินและให้คะแนนได้ตามปกติ
+            แถบนี้เป็นเพียงสถิติแบ่งกลุ่มตามกิจกรรม
+          </p>
+        </section>
+
+        {/* ---------------------------------------- ความคืบหน้าการประเมิน */}
+        <section>
           <Meter
-            label="วิ่งประจำ"
-            sub="ตั้งแต่ 10 เที่ยวขึ้นไป"
-            value={regular ?? 0}
-            of={total}
+            label="ประเมินแล้ว"
+            sub="เฉพาะคนที่สถานะยังใช้งานอยู่"
+            value={reviewed}
+            of={scope}
+            tone={reviewed === 0 ? 'warn' : undefined}
           />
-          <Meter
-            label="วิ่งงานใน 30 วันล่าสุด"
-            sub="พร้อมรับงานตอนนี้"
-            value={recent ?? 0}
-            of={total}
-          />
-        </div>
 
-        <p className="coverage-note">
-          สองแถบนี้วัดจากรายชื่อทั้งหมด — ส่วนที่เหลือคือคนที่เคยวิ่งไม่กี่เที่ยวหรือหายไปนานแล้ว
-        </p>
-      </section>
+          <p className="coverage-note">
+            {reviewed === 0 ? (
+              <>
+                ยังไม่มีการประเมิน พขร. แม้แต่คนเดียว การจัดอันดับในขณะนี้จึงอ้างอิงจากประสบการณ์ตาม
+                จำนวนเที่ยววิ่งเท่านั้น ยังไม่มีคะแนนประเมินมาช่วยแยกแยะคุณภาพของพนักงานขับรถแต่ละคน
+              </>
+            ) : (
+              <>
+                เหลืออีก {fmtNum(waiting)} คนที่ยังไม่ได้รับการประเมิน
+                ยิ่งค้างมาก การจัดอันดับยิ่งอ้างอิงจากประสบการณ์ตามจำนวนเที่ยววิ่งมากกว่าคุณภาพ
+              </>
+            )}
+          </p>
 
-      {/* ---------------------------------------- ความคืบหน้าการประเมิน */}
-      <section>
-        <Meter
-          label="ประเมินแล้ว"
-          sub="เฉพาะคนที่ยังวิ่งงานอยู่ใน 90 วันล่าสุด"
-          value={reviewed}
-          of={scope}
-          tone={reviewed === 0 ? 'warn' : undefined}
-        />
-
-        <p className="coverage-note">
-          {reviewed === 0 ? (
-            <>
-              ยังไม่มีการประเมินคนขับเลยสักคน การจัดอันดับตอนนี้จึงตัดสินด้วยประสบการณ์อย่างเดียว
-              ยังไม่มีคะแนนคุณภาพมาแยกคนเก่งออกจากคนที่ยังไม่รู้ฝีมือ
-            </>
-          ) : (
-            <>
-              เหลืออีก {fmtNum(waiting)} คนที่ยังไม่เคยได้รับการประเมิน
-              ยิ่งค้างมาก การจัดอันดับยิ่งอาศัยประสบการณ์มากกว่าคุณภาพ
-            </>
-          )}
-        </p>
-
-        <div style={{ marginTop: 14 }}>
-          <Link to="/pending" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
-            <IconStar size={14} />
-            {reviewed === 0 ? 'เริ่มประเมินคนแรก' : 'ไปประเมินคนที่ค้าง'}
-          </Link>
-        </div>
-      </section>
+          <div style={{ marginTop: 14 }}>
+            <Link to="/pending" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
+              <IconStar size={14} />
+              {reviewed === 0 ? 'เริ่มประเมิน' : 'ไปประเมินคนที่ค้าง'}
+            </Link>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

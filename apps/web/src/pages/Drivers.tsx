@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -152,22 +152,40 @@ function useDebounced<T>(value: T, ms = 300): T {
 
 export default function Drivers() {
   const { can } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // เข้ามาจากแท็บ "ควรปรับสถานะ" — เจาะจงหาคน active ที่เงียบหายเกิน 90 วัน
+  // ต้องเป็นค่าเริ่มต้นตอนโหลดหน้าเท่านั้น (ไม่ผูกกับ searchParams ต่อ) เพราะ
+  // ผู้ใช้ต้องปรับตัวกรองอื่นต่อได้เองโดยไม่ถูกดึงกลับไปที่ค่าจาก URL ทุกครั้ง
+  const [staleOnly, setStaleOnly] = useState(() => searchParams.get('stale') === '1')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('active')
   const [minJobs, setMinJobs] = useState(0)
-  const [sort, setSort] = useState<SortKey>('total_jobs')
-  const [asc, setAsc] = useState(false)
+  const [sort, setSort] = useState<SortKey>(() => (staleOnly ? 'last_job_date' : 'total_jobs'))
+  const [asc, setAsc] = useState(() => staleOnly)
   const [page, setPage] = useState(0)
   const [statusFor, setStatusFor] = useState<DriverDirectoryRow | null>(null)
 
   const dq = useDebounced(q)
 
+  function clearStaleFilter() {
+    setStaleOnly(false)
+    setSort('total_jobs')
+    setAsc(false)
+    setSearchParams(
+      (sp) => {
+        sp.delete('stale')
+        return sp
+      },
+      { replace: true },
+    )
+  }
+
   useEffect(() => {
     setPage(0)
-  }, [dq, status, minJobs, sort, asc])
+  }, [dq, status, minJobs, sort, asc, staleOnly])
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['drivers', dq, status, minJobs, sort, asc, page],
+    queryKey: ['drivers', dq, status, minJobs, sort, asc, page, staleOnly],
     queryFn: async () => {
       let query = supabase
         .from('driver_directory')
@@ -180,6 +198,7 @@ export default function Drivers() {
       }
       if (status) query = query.eq('status', status)
       if (minJobs > 0) query = query.gte('total_jobs', minJobs)
+      if (staleOnly) query = query.gt('total_jobs', 0).gt('days_since_last_job', 90)
 
       query = query.order(sort, { ascending: asc, nullsFirst: false })
 
@@ -196,21 +215,18 @@ export default function Drivers() {
       const dir = () =>
         supabase.from('driver_directory').select('id', { count: 'exact' }).limit(1)
 
-      // เงื่อนไข "ยังวิ่งงานอยู่ใน 90 วันล่าสุด" ต้องตรงกับค่าเริ่มต้นของหน้า /pending
-      // และตัวเลขบนเมนูเสมอ ไม่งั้นตัวเลขจะไม่ตรงกันข้ามหน้า
+      // เงื่อนไขต้องตรงกับค่าเริ่มต้นของหน้า /pending และตัวเลขบนเมนูเสมอ ไม่งั้น
+      // ตัวเลขจะไม่ตรงกันข้ามหน้า — นับจากสถานะ active/probation ล้วน ๆ ไม่กรอง
+      // ด้วยความเคลื่อนไหวล่าสุดอีกชั้น เพราะสถานะคือสิ่งที่คนตัดสินใจปิดเองอยู่แล้ว
       const [all, regular, recent, pending, scopeAll] = await Promise.all([
         dir().eq('status', 'active'),
         dir().eq('status', 'active').gte('total_jobs', 10),
         dir().eq('status', 'active').lte('days_since_last_job', 30),
-        supabase
-          .from('drivers_pending_review')
-          .select('id', { count: 'exact' })
-          .lte('days_since_last_job', 90)
-          .limit(1),
-        // ตัวหารของแถบความคืบหน้า ต้องเป็นกลุ่มเดียวกับตัวตั้ง (คนที่ยังวิ่งอยู่ใน
-        // 90 วัน ทั้งหมด ไม่ว่าประเมินไปแล้วหรือยัง) ไม่ใช่ พขร. ทั้งระบบ ไม่งั้นคนที่
-        // "ยังไม่ประเมินแต่ไม่เข้าเกณฑ์" จะถูกนับเป็นประเมินแล้วโดยอัตโนมัติ
-        dir().in('status', ['active', 'probation']).lte('days_since_last_job', 90),
+        supabase.from('drivers_pending_review').select('id', { count: 'exact' }).limit(1),
+        // ตัวหารของแถบความคืบหน้า ต้องเป็นกลุ่มเดียวกับตัวตั้ง (active/probation
+        // ทั้งหมด ไม่ว่าประเมินไปแล้วหรือยัง) ไม่งั้นคนที่ "ยังไม่ประเมิน" จะถูกนับ
+        // เป็นประเมินแล้วโดยอัตโนมัติ
+        dir().in('status', ['active', 'probation']),
       ])
 
       return {
@@ -287,10 +303,7 @@ export default function Drivers() {
       <div className="page-head">
         <div>
           <h1>รายชื่อ พขร.</h1>
-          <p>
-            คะแนนที่แสดงเป็นคะแนนปรับแล้ว ถ่วงน้ำหนักตามจำนวนรีวิวและความสดของข้อมูล
-            ไม่ใช่ค่าเฉลี่ยดิบ — กดหัวคอลัมน์เพื่อเรียงลำดับ
-          </p>
+          <p>ภาพรวมคะแนนและสถานะของ พขร. ทุกคนในระบบ</p>
         </div>
       </div>
 
@@ -330,11 +343,27 @@ export default function Drivers() {
             </select>
           </div>
         </div>
-        {minJobs === 0 && !dq && (
+        {staleOnly ? (
           <p className="hint" style={{ marginTop: 10 }}>
-            พขร. กว่าครึ่งในข้อมูลชุดแรกวิ่งเพียงเที่ยวเดียว
-            กรองด้วยจำนวนเที่ยวขั้นต่ำเพื่อดูเฉพาะคนที่วิ่งประจำ
+            กำลังกรอง: สถานะ active ที่เคยวิ่งงานจริงมาก่อน แต่ไม่มีความเคลื่อนไหวเกิน 90 วันแล้ว
+            เรียงคนที่เงียบหายนานสุดขึ้นก่อน{' '}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ verticalAlign: 'baseline', padding: '2px 10px' }}
+              onClick={clearStaleFilter}
+            >
+              ล้างตัวกรอง
+            </button>
           </p>
+        ) : (
+          minJobs === 0 &&
+          !dq && (
+            <p className="hint" style={{ marginTop: 10 }}>
+              พขร. กว่าครึ่งในข้อมูลชุดแรกวิ่งเพียงเที่ยวเดียว
+              กรองด้วยจำนวนเที่ยวขั้นต่ำเพื่อดูเฉพาะคนที่วิ่งประจำ
+            </p>
+          )
         )}
       </div>
 
