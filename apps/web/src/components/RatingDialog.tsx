@@ -94,7 +94,11 @@ export default function RatingDialog({
       void qc.invalidateQueries({ queryKey: ['pending'] })
       // ไม่ทำแบบนี้ตัวเลขค้างบนเมนู "รอประเมิน" จะไม่ลดจนกว่าแคชจะหมดอายุเอง (2 นาที)
       void qc.invalidateQueries({ queryKey: ['pending-count'] })
-      // อันดับในหน้าหาคนสำหรับงานใช้คะแนนจริงเป็นตัวเรียงหลัก ต้องล้างด้วย
+      // แถบ "ประเมินแล้ว" ในหน้ารายชื่อ พขร. อ่านจากคิวรี driver-kpis (แคช 5 นาที)
+      // ถ้าไม่ล้าง ให้คะแนนเสร็จแล้วแถบยังขึ้น 0% และยังเขียนว่า "ยังไม่มีการประเมิน
+      // พขร. แม้แต่คนเดียว" สวนทางกับตัวเลขบนเมนูที่ลดไปแล้ว
+      void qc.invalidateQueries({ queryKey: ['driver-kpis'] })
+      // อันดับในหน้าหา พขร. เพื่อเข้ารับงานใช้คะแนนจริงเป็นตัวเรียงหลัก ต้องล้างด้วย
       // ไม่งั้นให้คะแนนเสร็จแล้วกลับไปดูอันดับจะยังเป็นของก่อนให้คะแนน
       void qc.invalidateQueries({ queryKey: ['fit'] })
       onClose()
@@ -109,10 +113,10 @@ export default function RatingDialog({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="dialog" role="dialog" aria-modal="true" aria-label="ให้คะแนน พขร.">
+      <div className="dialog" role="dialog" aria-modal="true" aria-label="ประเมิน พขร.">
         <div className="card-head">
           <div>
-            <h2>ให้คะแนน · {driverName}</h2>
+            <h2>ประเมิน · {driverName}</h2>
             <div className="muted" style={{ fontSize: 13 }}>
               {jobLabel ?? 'ประเมินภาพรวมทั้งการทำงาน — ไม่ผูกกับเที่ยวใดเที่ยวหนึ่ง'}
             </div>
@@ -261,10 +265,10 @@ function Stars({ value, onChange }: { value: number; onChange: (v: number) => vo
 function translate(msg: string): string {
   if (msg.includes('ต้องให้คะแนนครบทุกเกณฑ์')) return msg
   if (msg.includes('driver_ratings_one_per_job'))
-    return 'คุณให้คะแนนงานนี้ไปแล้ว หนึ่งงานให้คะแนนได้คนละหนึ่งครั้ง'
+    return 'คุณประเมินงานนี้ไปแล้ว หนึ่งงานประเมินได้คนละหนึ่งครั้ง'
   if (msg.includes('driver_ratings_reason_len'))
     return `เหตุผลสั้นเกินไป ต้องอย่างน้อย ${MIN_REASON} ตัวอักษร`
   if (msg.includes('row-level security') || msg.includes('violates row-level'))
-    return 'ไม่มีสิทธิ์ให้คะแนนงานนี้ — ให้คะแนนได้เฉพาะงานที่จบแล้วและคุณเกี่ยวข้องด้วย'
+    return 'ไม่มีสิทธิ์ประเมินงานนี้ — ประเมินได้เฉพาะงานที่จบแล้วและคุณเกี่ยวข้องด้วย'
   return msg
 }

@@ -430,7 +430,7 @@ export default function NewJob() {
             {msg.kind === 'ok' && (
               <>
                 {' '}
-                <Link to="/pending">ไปให้คะแนนงานที่ค้าง →</Link>
+                <Link to="/pending">ไปประเมินคนที่ค้าง →</Link>
               </>
             )}
           </div>

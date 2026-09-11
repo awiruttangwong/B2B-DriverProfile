@@ -232,7 +232,7 @@ export default function DriverProfile() {
 
             {BLOCKING.includes(d.status) && (
               <div className="note-box warn" style={{ marginTop: 10, maxWidth: 62 + 'ch' }}>
-                <strong>ไม่ขึ้นในหน้าหาคนสำหรับงาน</strong>
+                <strong>ไม่ขึ้นในหน้าหา พขร. เพื่อเข้ารับงาน</strong>
                 {d.status_reason ? ` — ${d.status_reason}` : ''}
               </div>
             )}

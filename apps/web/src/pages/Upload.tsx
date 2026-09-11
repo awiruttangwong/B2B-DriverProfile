@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import {
   cleanSheets,
@@ -44,6 +45,7 @@ const SHOWN_FIELDS: Field[] = [
 
 export default function Upload() {
   const { can } = useAuth()
+  const qc = useQueryClient()
   const [stage, setStage] = useState<Stage>('idle')
   const [filename, setFilename] = useState('')
   const [scans, setScans] = useState<SheetScan[]>([])
@@ -216,6 +218,11 @@ export default function Upload() {
       })
       setReport(r)
       setStage('done')
+      // นำเข้าข้อมูลกระทบตัวเลขทุกหน้า (รายชื่อ คิวรอประเมิน อันดับ ตัวเลขบนเมนู)
+      // แคชตั้งไว้ 60 วินาทีขึ้นไปและปิด refetchOnWindowFocus ส่วนเมนูข้างก็ไม่เคย
+      // unmount ตัวเลขเก่าจึงค้างข้ามการนำเข้าถ้าไม่สั่งล้างเอง ล้างทั้งหมดเพราะ
+      // การนำเข้าเปลี่ยนแทบทุกตาราง ไม่ใช่แค่บางคิวรี
+      void qc.invalidateQueries()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setStage('preview')
@@ -247,9 +254,9 @@ export default function Upload() {
         <div>
           <h1>อัปโหลดไฟล์ข้อมูลงาน</h1>
           <p>
-            ระบบอ่านหัวตารางเองทั้งแบบ ALLMANUAL, EXPRESS และ MASTER
-            ไฟล์ที่มีหลายชีตจะถูกสแกนทีละชีตแล้วให้เลือกว่าจะนำเข้าชีตไหน
-            เที่ยวที่เคยนำเข้าไปแล้วจะถูกข้ามอัตโนมัติ อัปโหลดไฟล์เดิมซ้ำจึงไม่ทำให้ข้อมูลซ้ำ
+            ระบบรู้จักหัวตารางโดยอัตโนมัติทั้ง 3 รูปแบบ — ALLMANUAL, EXPRESS และ MASTER
+            ไฟล์ที่มีหลายชีตจะถูกสแกนให้ทีละชีต แล้วให้เลือกว่าจะนำเข้าชีตไหนบ้าง
+            เที่ยวที่เคยนำเข้าไปแล้วจะถูกข้ามให้เองเสมอ จึงอัปโหลดไฟล์เดิมซ้ำได้โดยไม่ทำให้ข้อมูลซ้ำ
           </p>
         </div>
       </div>
@@ -276,8 +283,8 @@ export default function Upload() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <b>ยังไม่มีไฟล์ข้อมูล?</b>
               <p className="muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
-                ดาวน์โหลดเทมเพลตไปกรอกได้เลย หัวตารางตรงกับที่ระบบรู้จักอยู่แล้ว
-                ไม่ต้องกังวลเรื่องจับคู่คอลัมน์ผิด
+                ดาวน์โหลดเทมเพลตนี้ไปกรอกได้เลย หัวตารางตรงกับที่ระบบรู้จักไว้แล้วทุกคอลัมน์
+                จึงไม่ต้องกังวลเรื่องจับคู่คอลัมน์ผิดพลาด
               </p>
             </div>
             <button
@@ -339,12 +346,13 @@ export default function Upload() {
           </div>
 
           <div className="note-box" style={{ marginTop: 16 }}>
-            <strong>ต้องมีอย่างน้อย</strong> —{' '}
+            <strong>คอลัมน์ที่จำเป็นต้องมี</strong> —{' '}
             {REQUIRED_FIELDS.map((f) => FIELD_LABEL[f]).join(' · ')}
             <br />
-            คอลัมน์อื่นระบบจะอ่านให้ถ้ามี และรับได้หลายชื่อ เช่น ราคารับ/ราคาวางบิล ·
-            ราคาจ่าย/ค่าเที่ยว พขร. · เส้นทาง (Route)/เส้นทาง / ดรอป / จำนวนลัง ·
-            ชื่อพขร/ชื่อ พขร.
+            คอลัมน์อื่นไม่บังคับ แต่หากมีในไฟล์ ระบบจะอ่านให้โดยอัตโนมัติ และรองรับชื่อคอลัมน์ได้หลายรูปแบบ
+            เช่น &ldquo;ราคารับ&rdquo; หรือ &ldquo;ราคาวางบิล&rdquo; · &ldquo;ราคาจ่าย&rdquo; หรือ
+            &ldquo;ค่าเที่ยว พขร.&rdquo; · &ldquo;เส้นทาง (Route)&rdquo; หรือ
+            &ldquo;เส้นทาง / ดรอป / จำนวนลัง&rdquo; · &ldquo;ชื่อพขร&rdquo; หรือ &ldquo;ชื่อ พขร.&rdquo;
           </div>
         </>
       )}

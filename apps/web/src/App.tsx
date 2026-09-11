@@ -90,7 +90,7 @@ function NavLinks() {
         รายชื่อ พขร.
       </Tab>
       <Tab to="/find" icon={<IconTarget />}>
-        หาคนสำหรับงาน
+        หา พขร. เพื่อเข้ารับงาน
       </Tab>
       <Tab to="/pending" icon={<IconStar />} count={pending}>
         รอประเมิน

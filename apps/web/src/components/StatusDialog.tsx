@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { DriverStatus } from '../types/database'
 import { STATUS_LABEL } from '../lib/format'
 
-/** สถานะที่ทำให้ พขร. หายจากหน้าหาคนสำหรับงาน จึงต้องกรอกเหตุผล */
+/** สถานะที่ทำให้ พขร. หายจากหน้าหา พขร. เพื่อเข้ารับงาน จึงต้องกรอกเหตุผล */
 export const BLOCKING: DriverStatus[] = ['inactive', 'blacklisted']
 
 const OPTIONS: {
@@ -14,7 +14,7 @@ const OPTIONS: {
 }[] = [
   {
     v: 'active',
-    desc: 'รับงานได้ตามปกติ และขึ้นในหน้าหาคนสำหรับงาน',
+    desc: 'รับงานได้ตามปกติ และขึ้นในหน้าหา พขร. เพื่อเข้ารับงาน',
     tone: 'ok',
   },
   {
@@ -24,7 +24,7 @@ const OPTIONS: {
   },
   {
     v: 'inactive',
-    desc: 'พักงานชั่วคราว จะไม่ขึ้นในหน้าหาคนสำหรับงาน แต่ประวัติงานเดิมยังอยู่ครบ',
+    desc: 'พักงานชั่วคราว จะไม่ขึ้นในหน้าหา พขร. เพื่อเข้ารับงาน แต่ประวัติงานเดิมยังอยู่ครบ',
     tone: 'warn',
   },
   {
@@ -80,6 +80,11 @@ export default function StatusDialog({
       void qc.invalidateQueries({ queryKey: ['drivers'] })
       void qc.invalidateQueries({ queryKey: ['driver-kpis'] })
       void qc.invalidateQueries({ queryKey: ['fit'] })
+      // การปิดสถานะดึงคนออกจาก drivers_pending_review (view กรอง active/probation)
+      // ถ้าไม่ล้างสองอันนี้ ตัวเลขบนเมนูกับแถวในหน้ารอประเมินจะค้างอยู่เหมือนเดิม
+      // ทั้งที่คนนั้นหลุดออกไปแล้ว — เห็นชัดตอนไล่ปิดสถานะคนที่ไม่ใช้งานทีละหลายคน
+      void qc.invalidateQueries({ queryKey: ['pending'] })
+      void qc.invalidateQueries({ queryKey: ['pending-count'] })
       onClose()
     },
     onError: (e: Error) => setErr(translate(e.message)),
@@ -189,7 +194,7 @@ export default function StatusDialog({
 
           {changed && needsReason && (
             <div className="note-box warn" style={{ marginTop: 14 }}>
-              หลังบันทึก <strong>{driverName}</strong> จะไม่ปรากฏในหน้า “หาคนสำหรับงาน” อีก
+              หลังบันทึก <strong>{driverName}</strong> จะไม่ปรากฏในหน้า “หา พขร. เพื่อเข้ารับงาน” อีก
               ประวัติงานและคะแนนเดิมยังอยู่ครบ และเปลี่ยนกลับได้ทุกเมื่อ
             </div>
           )}

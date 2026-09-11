@@ -14,6 +14,17 @@ type SortKey = 'total_jobs' | 'adjusted_score' | 'last_job_date' | 'full_name'
 
 const PAGE_SIZE = 50
 
+/** ช่วงจำนวนเที่ยววิ่งขั้นต่ำ — ขอบเขตซ้อนกันตรงตัวเลขหัว-ท้ายตั้งใจ (10 อยู่ได้
+ * ทั้ง "1-10" และ "10-20") เพื่อให้ป้ายกำกับตรงกับตัวเลขที่พิมพ์ไว้ตรง ๆ */
+const JOB_RANGE_OPTIONS: { value: string; label: string; min?: number; max?: number }[] = [
+  { value: '', label: 'ไม่มีกำหนด' },
+  { value: '1-10', label: '1-10 เที่ยว', min: 1, max: 10 },
+  { value: '10-20', label: '10-20 เที่ยว', min: 10, max: 20 },
+  { value: '20-100', label: '20-100 เที่ยว', min: 20, max: 100 },
+  { value: '100-200', label: '100-200 เที่ยว', min: 100, max: 200 },
+  { value: '200-300', label: '200-300 เที่ยว', min: 200, max: 300 },
+]
+
 interface DriverSuggestion {
   id: string
   full_name: string
@@ -70,7 +81,11 @@ function DriverSearchField({
       <input
         id="q"
         ref={inputRef}
-        type="search"
+        // type="text" ไม่ใช่ "search" — เบราว์เซอร์ (Chrome เป็นต้น) แปะปุ่มล้าง
+        // ค่า (×) ในตัวให้ input type=search ที่มีค่าอยู่แล้วเสมอ ซ้อนทับกับปุ่ม
+        // .combo-clear ที่เราวาดเองด้านล่าง กลายเป็นมี × สองอันซ้อนกัน — Combobox
+        // (ใช้ในหน้า "หา พขร. เพื่อเข้ารับงาน") ใช้ type="text" อยู่แล้วจึงไม่เจอปัญหานี้
+        type="text"
         autoComplete="off"
         placeholder="ชื่อ พขร. / เบอร์โทร / DRV-00123"
         value={value}
@@ -159,7 +174,7 @@ export default function Drivers() {
   const [staleOnly, setStaleOnly] = useState(() => searchParams.get('stale') === '1')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('active')
-  const [minJobs, setMinJobs] = useState(0)
+  const [jobRange, setJobRange] = useState('')
   const [sort, setSort] = useState<SortKey>(() => (staleOnly ? 'last_job_date' : 'total_jobs'))
   const [asc, setAsc] = useState(() => staleOnly)
   const [page, setPage] = useState(0)
@@ -182,10 +197,10 @@ export default function Drivers() {
 
   useEffect(() => {
     setPage(0)
-  }, [dq, status, minJobs, sort, asc, staleOnly])
+  }, [dq, status, jobRange, sort, asc, staleOnly])
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['drivers', dq, status, minJobs, sort, asc, page, staleOnly],
+    queryKey: ['drivers', dq, status, jobRange, sort, asc, page, staleOnly],
     queryFn: async () => {
       let query = supabase
         .from('driver_directory')
@@ -197,7 +212,9 @@ export default function Drivers() {
         query = query.or(`full_name.ilike.%${t}%,phone.ilike.%${t}%,driver_code.ilike.%${t}%`)
       }
       if (status) query = query.eq('status', status)
-      if (minJobs > 0) query = query.gte('total_jobs', minJobs)
+      const range = JOB_RANGE_OPTIONS.find((o) => o.value === jobRange)
+      if (range?.min !== undefined) query = query.gte('total_jobs', range.min)
+      if (range?.max !== undefined) query = query.lte('total_jobs', range.max)
       if (staleOnly) query = query.gt('total_jobs', 0).gt('days_since_last_job', 90)
 
       query = query.order(sort, { ascending: asc, nullsFirst: false })
@@ -334,16 +351,17 @@ export default function Drivers() {
             </select>
           </div>
           <div style={{ flex: '1 1 160px' }}>
-            <label htmlFor="mj">จำนวนเที่ยวขั้นต่ำ</label>
-            <select id="mj" value={minJobs} onChange={(e) => setMinJobs(Number(e.target.value))}>
-              <option value={0}>ไม่กำหนด</option>
-              <option value={3}>ตั้งแต่ 3 เที่ยว</option>
-              <option value={10}>ตั้งแต่ 10 เที่ยว</option>
-              <option value={30}>ตั้งแต่ 30 เที่ยว</option>
+            <label htmlFor="mj">จำนวนเที่ยววิ่งขั้นต่ำ</label>
+            <select id="mj" value={jobRange} onChange={(e) => setJobRange(e.target.value)}>
+              {JOB_RANGE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
-        {staleOnly ? (
+        {staleOnly && (
           <p className="hint" style={{ marginTop: 10 }}>
             กำลังกรอง: สถานะ active ที่เคยวิ่งงานจริงมาก่อน แต่ไม่มีความเคลื่อนไหวเกิน 90 วันแล้ว
             เรียงคนที่เงียบหายนานสุดขึ้นก่อน{' '}
@@ -356,14 +374,6 @@ export default function Drivers() {
               ล้างตัวกรอง
             </button>
           </p>
-        ) : (
-          minJobs === 0 &&
-          !dq && (
-            <p className="hint" style={{ marginTop: 10 }}>
-              พขร. กว่าครึ่งในข้อมูลชุดแรกวิ่งเพียงเที่ยวเดียว
-              กรองด้วยจำนวนเที่ยวขั้นต่ำเพื่อดูเฉพาะคนที่วิ่งประจำ
-            </p>
-          )
         )}
       </div>
 
@@ -403,14 +413,14 @@ export default function Drivers() {
                     <b>ไม่พบ พขร. ที่ตรงกับเงื่อนไข</b>
                     {dq
                       ? `ไม่มีใครชื่อ เบอร์ หรือรหัสตรงกับ “${dq}”`
-                      : 'ลองผ่อนตัวกรองสถานะหรือจำนวนเที่ยวขั้นต่ำ'}
+                      : 'ลองผ่อนตัวกรองสถานะหรือจำนวนเที่ยววิ่งขั้นต่ำ'}
                     <div style={{ marginTop: 12 }}>
                       <button
                         className="btn btn-sm"
                         onClick={() => {
                           setQ('')
                           setStatus('')
-                          setMinJobs(0)
+                          setJobRange('')
                         }}
                       >
                         ล้างตัวกรองทั้งหมด

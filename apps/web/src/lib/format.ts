@@ -124,8 +124,8 @@ export const OUTCOME_LABEL: Record<string, string> = {
 
 export const ACTION_LABEL: Record<string, string> = {
   driver_status: 'เปลี่ยนสถานะ พขร.',
-  rating_create: 'ให้คะแนน พขร.',
-  rating_void: 'ยกเลิกใบให้คะแนน',
+  rating_create: 'ประเมิน พขร.',
+  rating_void: 'ยกเลิกใบประเมิน',
   job_import: 'บันทึก/อัปโหลดงาน',
   user_join: 'ผู้ใช้งานใหม่',
 }
