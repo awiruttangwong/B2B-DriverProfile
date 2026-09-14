@@ -205,7 +205,11 @@ function Stars({ value, onChange }: { value: number; onChange: (v: number) => vo
 }
 
 function translate(msg: string): string {
-  if (msg.includes('ต้องให้คะแนนครบทุกเกณฑ์')) return msg
+  // ข้อความจาก submit_rating() ในฐานข้อมูล — จับด้วยข้อความเดิมแต่ตอบด้วยคำของหน้าเว็บเอง
+  // ไม่ส่งต่อตรง ๆ เพราะฝั่งฐานข้อมูลยังใช้คำว่า "ให้คะแนน" ขณะที่ทั้งระบบใช้ "ประเมิน"
+  // เจอได้จริงเมื่อเกณฑ์ถูกเปลี่ยนระหว่างที่หน้านี้เปิดค้าง (รายการเกณฑ์ cache ไว้ 30 นาที)
+  if (msg.includes('ต้องให้คะแนนครบทุกเกณฑ์'))
+    return 'เกณฑ์การประเมินมีการเปลี่ยนแปลง — ปิดหน้าต่างนี้แล้วรีเฟรชหน้าเว็บก่อนประเมินอีกครั้ง'
   if (msg.includes('driver_ratings_one_per_job'))
     return 'คุณประเมินงานนี้ไปแล้ว หนึ่งงานประเมินได้คนละหนึ่งครั้ง'
   if (msg.includes('row-level security') || msg.includes('violates row-level'))

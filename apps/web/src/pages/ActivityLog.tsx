@@ -6,6 +6,8 @@ import type { ActivityLogRow } from '../types/database'
 import {
   ACTION_LABEL,
   ACTION_TONE,
+  CONTACT_OUTCOME_LABEL,
+  CONTACT_OUTCOME_TONE,
   ROLE_LABEL,
   STATUS_LABEL,
   fmtDateTime,
@@ -89,6 +91,28 @@ function Detail({ row }: { row: ActivityLogRow }) {
   if (row.action === 'user_join') {
     const role = d.role as string
     return <span className="badge brand">{ROLE_LABEL[role] ?? role}</span>
+  }
+
+  if (row.action === 'driver_contact') {
+    const outcome = d.outcome as string
+    const note = d.note as string | null
+    const calledAt = d.called_at as string | null
+    return (
+      <>
+        <span className="row" style={{ gap: 6 }}>
+          <span className={`badge ${CONTACT_OUTCOME_TONE[outcome] ?? ''}`}>
+            {CONTACT_OUTCOME_LABEL[outcome] ?? outcome}
+          </span>
+          {/* เวลาในคอลัมน์ซ้ายสุดคือเวลาที่บันทึก — ถ้าลงย้อนหลัง ต้องบอกเวลาที่โทรจริงด้วย */}
+          {calledAt && <span className="muted" style={{ fontSize: 12 }}>โทร {fmtDateTime(calledAt)}</span>}
+        </span>
+        {note?.trim() && (
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
+            {note}
+          </div>
+        )}
+      </>
+    )
   }
 
   return <span className="muted">—</span>

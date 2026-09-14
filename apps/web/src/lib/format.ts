@@ -128,6 +128,7 @@ export const ACTION_LABEL: Record<string, string> = {
   rating_void: 'ยกเลิกใบประเมิน',
   job_import: 'บันทึก/อัปโหลดงาน',
   user_join: 'ผู้ใช้งานใหม่',
+  driver_contact: 'บันทึกการโทร',
 }
 
 export const ACTION_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'brand'> = {
@@ -136,6 +137,24 @@ export const ACTION_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'brand'> = {
   rating_void: 'bad',
   job_import: 'brand',
   user_join: 'brand',
+  driver_contact: 'brand',
+}
+
+/** ลำดับตามนี้คือลำดับปุ่มในกล่องบันทึกการโทร — จากผลที่ยังไม่รู้คำตอบ ไปสู่ผลที่ได้คำตอบแล้ว */
+export const CONTACT_OUTCOME_LABEL: Record<string, string> = {
+  answered: 'รับสาย',
+  no_answer: 'ไม่รับสาย',
+  accepted: 'ตอบรับงาน',
+  declined: 'ปฏิเสธงาน',
+}
+
+/** 4 สีไม่ซ้ำกันโดยตั้งใจ — รับสายต้องไม่ใช่เขียวเหมือนตอบรับงาน ไม่งั้นแยกไม่ออกในแวบเดียวว่า
+ * "แค่คุยแล้ว" หรือ "ตกลงรับงานแล้ว" ซึ่งเป็นสิ่งแรกที่คนโทรคนถัดไปอยากรู้ */
+export const CONTACT_OUTCOME_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'brand'> = {
+  answered: 'brand',
+  no_answer: 'warn',
+  accepted: 'ok',
+  declined: 'bad',
 }
 
 export const ROLE_LABEL: Record<string, string> = {

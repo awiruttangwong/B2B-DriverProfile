@@ -558,12 +558,17 @@ h3 {
   pointer-events: none;
 }
 /* จุดไข่ปลาช่องรหัสผ่านเล็กเกินไปตามค่าเริ่มต้นของเบราว์เซอร์ ขยายให้เห็นชัดขึ้น
-   ลด padding แนวตั้งชดเชย font-size ที่โตขึ้น ความสูงกล่องจะได้เท่าช่องอีเมลเหมือนเดิม */
+   ลด padding แนวตั้งชดเชย font-size ที่โตขึ้น ความสูงกล่องจะได้เท่าช่องอีเมลเหมือนเดิม
+   (18px × 1.6 + 6 + 6 ≈ 40.8px เทียบกับช่องปกติ 14px × 1.6 + 9 + 9 ≈ 40.4px)
+
+   padding ต้องใช้ !important — กฎ input ส่วนกลางด้านล่างใช้ :not() ซ้อน 7 ชั้น
+   ความเจาะจง (0,7,1) สูงกว่ากฎนี้ (0,1,1) และอยู่ทีหลัง จึงทับ padding ตรงนี้ทิ้ง
+   เงียบ ๆ (font-size กับ letter-spacing ไม่โดน เพราะกฎนั้นไม่ได้ตั้งสองค่านี้) */
 input[type='password'] {
   font-size: 18px;
   letter-spacing: 3px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
 }
 /*
  * ต้องใช้ style="paddingLeft" แทนคลาสนี้ ประกาศ padding-left ที่นี่ไม่มีผล เพราะ
@@ -596,6 +601,220 @@ input[type='password'] {
   background: var(--surface-2);
   color: var(--brand-strong);
   text-decoration: none;
+}
+
+/* =========================================================== ประวัติการติดต่อ */
+/* เบอร์โทรในหัวโปรไฟล์ — กดโทรออกได้บนมือถือ แต่ต้องไม่ดูเป็นลิงก์สีฟ้าเด่นกลางบรรทัด
+   รหัส พขร. ที่เป็นข้อความเทาธรรมดา จึงคงสีเดิมไว้แล้วค่อยเผยว่ากดได้ตอนชี้ */
+.phone-link {
+  color: inherit;
+  font-weight: inherit;
+  border-bottom: 1px dashed var(--line-strong);
+}
+.phone-link:hover {
+  color: var(--brand-strong);
+  border-bottom-color: var(--brand-strong);
+  text-decoration: none;
+}
+
+.contact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.contact-item {
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.contact-item:last-child {
+  border-bottom: 0;
+}
+.contact-item-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.contact-when {
+  font-size: 12px;
+  color: var(--ink-2);
+  min-width: 13ch;
+}
+.contact-who {
+  font-size: 12.5px;
+}
+/* ปุ่มแก้ไขชิดขวาสุดของแถวเสมอ ไม่ว่าชื่อผู้โทรจะสั้นหรือยาว */
+.contact-edit {
+  margin-left: auto;
+  min-height: 28px;
+  padding: 4px 8px;
+}
+.contact-note {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================== ตัวเลือกวันเวลา */
+.dtp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 12px;
+  line-height: 1.6;
+  text-align: left;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dtp-trigger > svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.dtp-trigger:hover {
+  border-color: var(--brand-line);
+}
+.dtp-trigger[aria-expanded='true'] {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+.dtp-chevron {
+  display: flex;
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.dtp-trigger[aria-expanded='true'] .dtp-chevron {
+  transform: rotate(180deg);
+}
+
+.dtp-panel {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+.dtp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.dtp-title {
+  flex: 1;
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.dtp-nav {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.dtp-nav:hover:not(:disabled) {
+  color: var(--brand-strong);
+  background: var(--surface-2);
+}
+.dtp-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.dtp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dtp-wd {
+  padding: 4px 0 6px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.dtp-day {
+  height: 36px;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.dtp-day:hover:not(:disabled):not(.is-selected) {
+  background: var(--brand-soft);
+}
+.dtp-day.is-other {
+  color: var(--muted);
+}
+.dtp-day.is-today {
+  font-weight: 600;
+  color: var(--brand-strong);
+  box-shadow: inset 0 0 0 1px var(--brand-line);
+}
+/* ใช้เฉดเข้ม ไม่ใช่สีแบรนด์แท้ ด้วยเหตุผลเดียวกับ .btn-primary — ตัวเลขขาวต้องได้ 4.5:1 */
+.dtp-day.is-selected {
+  font-weight: 600;
+  color: #fff;
+  background: var(--brand-strong);
+  box-shadow: none;
+}
+:root[data-theme='dark'] .dtp-day.is-selected {
+  color: #06202e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .dtp-day.is-selected {
+    color: #06202e;
+  }
+}
+.dtp-day:disabled {
+  color: var(--line-strong);
+  cursor: not-allowed;
+}
+.dtp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.dtp-time-label {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.dtp-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* แถบเบอร์โทรด้านบนของกล่องบันทึกการโทร — กดโทรออกก่อนแล้วค่อยกลับมากรอกผลได้ */
+.contact-dial {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  font-size: 15px;
 }
 .mono {
   font-family: var(--f-mono);
@@ -920,6 +1139,27 @@ label {
   background: var(--bad-soft);
   border-color: color-mix(in srgb, var(--bad) 45%, transparent);
   color: var(--bad);
+}
+/* ปุ่มยืนยันการลบ — ขั้นที่สองของการลบเท่านั้น (ขั้นแรกเป็นปุ่มธรรมดา) สีแดงทึบ
+   ให้ต่างจากปุ่มบันทึกสีฟ้าชัดเจน กันกดผิดเพราะนึกว่าเป็นปุ่มยืนยันทั่วไป */
+.btn-danger {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad) 88%, #000);
+  border-color: color-mix(in srgb, var(--bad) 88%, #000);
+}
+/* โหมดมืด --bad เป็นแดงอ่อน (#ef8078) ตัวหนังสือขาวบนสีนี้ได้แค่ ~2.6:1 ไม่ผ่านเกณฑ์
+   4.5:1 จึงสลับเป็นตัวหนังสือเข้ม (~7:1) — เงื่อนไขเดียวกับ .btn-primary ด้านบน */
+:root[data-theme='dark'] .btn-danger {
+  color: #2a0d0b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .btn-danger {
+    color: #2a0d0b;
+  }
 }
 
 /* =========================================================== ตาราง */
@@ -1429,6 +1669,80 @@ th[aria-sort] .arrow {
   }
 }
 
+/* =========================================================== หน้าจอตอนเปิดแอป */
+.boot {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.boot-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: boot-in 0.45s ease-out both;
+}
+@keyframes boot-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.boot-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow: var(--shadow);
+}
+.boot-brand {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.boot-brand .accent {
+  color: var(--brand-strong);
+}
+/* แถบความคืบหน้าแบบไม่รู้เปอร์เซ็นต์ — กวาดไปมาแทนวงกลมหมุน อ่านเป็น "ระบบกำลัง
+   ทำงานอยู่" ได้ชัดกว่าและดูสงบกว่าในจอที่ยังว่างทั้งหน้า */
+.boot-bar {
+  position: relative;
+  width: 176px;
+  height: 3px;
+  margin-top: 4px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  overflow: hidden;
+}
+.boot-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--brand);
+  animation: boot-sweep 1.15s ease-in-out infinite;
+}
+@keyframes boot-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.boot-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -1458,6 +1772,14 @@ th[aria-sort] .arrow {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* กฎด้านบนหยุดแอนิเมชันที่เฟรมสุดท้าย ซึ่งของแถบตอนเปิดแอปคือตำแหน่งที่กวาดพ้น
+     ขอบไปแล้ว = แถบว่างเปล่า ดูเหมือนระบบค้าง จึงตรึงเป็นแถบเต็มแทน */
+  .boot-bar::after {
+    width: 100%;
+    transform: none !important;
+    opacity: 0.55;
   }
 }
 

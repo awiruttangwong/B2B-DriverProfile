@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type {
   CustomerPerfRow,
+  DriverContact,
   DriverDirectoryRow,
   DriverStatus,
   DriverStatusLogRow,
@@ -12,8 +13,11 @@ import type {
   JobHistoryRow,
 } from '../types/database'
 import {
+  CONTACT_OUTCOME_LABEL,
+  CONTACT_OUTCOME_TONE,
   fmtDate,
   fmtDateShort,
+  fmtDateTime,
   fmtNum,
   fmtPhone,
   fmtScore,
@@ -21,8 +25,12 @@ import {
   OUTCOME_LABEL,
   STATUS_LABEL,
 } from '../lib/format'
-import { IconArrowLeft, IconEdit } from '../components/icons'
+import { IconArrowLeft, IconEdit, IconPhone } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
+import ContactDialog from '../components/ContactDialog'
+
+/** จำนวนรายการโทรที่แสดงก่อนกด "ดูทั้งหมด" — ส่วนใหญ่คนถัดไปสนใจแค่ไม่กี่ครั้งล่าสุด */
+const CONTACTS_PREVIEW = 5
 
 interface CriteriaAvg {
   code: string
@@ -34,9 +42,33 @@ interface CriteriaAvg {
 
 export default function DriverProfile() {
   const { id = '' } = useParams()
-  const { can } = useAuth()
+  const { can, session } = useAuth()
   const [historyLimit, setHistoryLimit] = useState(25)
   const [statusOpen, setStatusOpen] = useState<{ initialNext?: DriverStatus } | null>(null)
+  const [contactOpen, setContactOpen] = useState<{ existing?: DriverContact } | null>(null)
+  const [showAllContacts, setShowAllContacts] = useState(false)
+
+  const contacts = useQuery({
+    queryKey: ['driver', id, 'contacts'],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from('driver_contacts')
+        .select('*, caller:profiles!driver_contacts_caller_id_fkey(full_name, email)', {
+          count: 'exact',
+        })
+        .eq('driver_id', id)
+        .order('called_at', { ascending: false })
+        .limit(100)
+      if (error) throw error
+      return { rows: (data ?? []) as DriverContact[], total: count ?? 0 }
+    },
+    enabled: !!id,
+  })
+
+  // ตรงกับ policy driver_contacts_update/delete ในฐานข้อมูล — ซ่อนปุ่มแก้ของคนอื่นไว้
+  // ส่วนการกันจริงอยู่ที่ RLS (ContactDialog เช็คจำนวนแถวที่แก้ได้ซ้ำอีกชั้น)
+  const canEditContact = (c: DriverContact) =>
+    can('admin') || (c.caller_id === session?.user.id && can('admin', 'hr', 'ops'))
 
   const driver = useQuery({
     queryKey: ['driver', id],
@@ -203,7 +235,14 @@ export default function DriverProfile() {
           <div>
             <h1 style={{ fontSize: 22 }}>{d.full_name}</h1>
             <div className="mono muted" style={{ fontSize: 12.5 }}>
-              {d.driver_code} · {fmtPhone(d.phone)}
+              {d.driver_code} ·{' '}
+              {d.phone ? (
+                <a href={`tel:${d.phone}`} className="phone-link" title="กดเพื่อโทรออก">
+                  {fmtPhone(d.phone)}
+                </a>
+              ) : (
+                fmtPhone(d.phone)
+              )}
             </div>
             <div className="row" style={{ gap: 6, marginTop: 8 }}>
               <span
@@ -492,6 +531,82 @@ export default function DriverProfile() {
           </div>
         </div>
 
+        {/* -------------------------------------------- ประวัติการติดต่อ */}
+        <div className="card">
+          <div className="card-head">
+            <h2>ประวัติการติดต่อ</h2>
+            {can('admin', 'hr', 'ops') && (
+              <button className="btn btn-sm" onClick={() => setContactOpen({})}>
+                <IconPhone size={14} />
+                บันทึกการโทร
+              </button>
+            )}
+          </div>
+
+          {contacts.isLoading ? (
+            <div className="empty">
+              <span className="spinner" /> กำลังโหลด…
+            </div>
+          ) : contacts.error ? (
+            <div className="card-pad">
+              <div className="note-box err">
+                โหลดประวัติการติดต่อไม่สำเร็จ: {(contacts.error as Error).message}
+              </div>
+            </div>
+          ) : (contacts.data?.rows.length ?? 0) === 0 ? (
+            <div className="empty">
+              <b>ยังไม่มีบันทึกการโทร</b>
+              {can('admin', 'hr', 'ops')
+                ? 'โทรหาคนขับแล้วกด “บันทึกการโทร” เพื่อให้คนอื่นในทีมรู้ว่าติดต่อไปแล้ว'
+                : 'ยังไม่มีใครบันทึกการติดต่อ พขร. คนนี้'}
+            </div>
+          ) : (
+            <>
+              <ul className="contact-list">
+                {(showAllContacts
+                  ? contacts.data!.rows
+                  : contacts.data!.rows.slice(0, CONTACTS_PREVIEW)
+                ).map((c) => (
+                  <li key={c.id} className="contact-item">
+                    <div className="contact-item-main">
+                      <span className="mono contact-when">{fmtDateTime(c.called_at)}</span>
+                      <span className={`badge ${CONTACT_OUTCOME_TONE[c.outcome] ?? ''}`}>
+                        {CONTACT_OUTCOME_LABEL[c.outcome] ?? c.outcome}
+                      </span>
+                      <span className="muted contact-who">
+                        {c.caller?.full_name ?? c.caller?.email ?? 'ไม่ทราบผู้โทร'}
+                      </span>
+                      {canEditContact(c) && (
+                        <button
+                          className="btn btn-sm btn-ghost contact-edit"
+                          onClick={() => setContactOpen({ existing: c })}
+                          aria-label={`แก้ไขบันทึกการโทร ${fmtDateTime(c.called_at)}`}
+                        >
+                          <IconEdit size={14} />
+                        </button>
+                      )}
+                    </div>
+                    {c.note?.trim() && <p className="contact-note">{c.note}</p>}
+                  </li>
+                ))}
+              </ul>
+
+              {contacts.data!.rows.length > CONTACTS_PREVIEW && (
+                <div className="card-pad" style={{ textAlign: 'center', paddingTop: 10 }}>
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setShowAllContacts((v) => !v)}
+                  >
+                    {showAllContacts
+                      ? 'แสดงน้อยลง'
+                      : `ดูทั้งหมด (${fmtNum(contacts.data!.total)} ครั้ง)`}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* -------------------------------------- ประวัติการเปลี่ยนสถานะ */}
         {(statusLog.data?.length ?? 0) > 0 && (
           <div className="card">
@@ -563,6 +678,16 @@ export default function DriverProfile() {
           currentReason={d.status_reason}
           initialNext={statusOpen.initialNext}
           onClose={() => setStatusOpen(null)}
+        />
+      )}
+
+      {contactOpen && (
+        <ContactDialog
+          driverId={d.id}
+          driverName={d.full_name}
+          phone={d.phone}
+          existing={contactOpen.existing}
+          onClose={() => setContactOpen(null)}
         />
       )}
     </main>

@@ -110,16 +110,33 @@ function NavLinks() {
   )
 }
 
+/**
+ * หน้าจอตอนเปิดแอป — ช่วงที่ยังไม่รู้ว่ามี session อยู่หรือไม่ จึงยังตัดสินใจไม่ได้
+ * ว่าจะวาดโครงหน้าหลักหรือหน้าเข้าสู่ระบบ
+ *
+ * เป็นหน้าจอแรกที่ผู้ใช้เห็นทุกครั้งที่เปิดระบบ เดิมเป็น spinner ขนาด 15px ลอยอยู่
+ * กลางพื้นที่ว่างทั้งจอซึ่งดูเหมือนหน้าค้างมากกว่าหน้ากำลังโหลด จึงใส่โลโก้กับชื่อ
+ * ระบบกำกับให้รู้ว่ากำลังเข้าระบบอะไรอยู่ และใช้แถบความคืบหน้าแทนวงกลมหมุน
+ */
+function BootScreen() {
+  return (
+    <div className="boot">
+      <div className="boot-inner">
+        <img className="boot-logo" src="/logo-sidebar.png" alt="" aria-hidden="true" />
+        <span className="boot-brand">
+          <span className="accent">2K</span> Driver Profile
+        </span>
+        <span className="boot-bar" role="progressbar" aria-label="กำลังโหลดระบบ" />
+        <span className="boot-note">กำลังเตรียมระบบ…</span>
+      </div>
+    </div>
+  )
+}
+
 function Shell() {
   const { session, profile, loading, can, signOut } = useAuth()
 
-  if (loading && !session) {
-    return (
-      <div className="empty" style={{ paddingTop: 120 }}>
-        <span className="spinner" /> กำลังโหลด…
-      </div>
-    )
-  }
+  if (loading && !session) return <BootScreen />
 
   if (!session) return <Login />
 

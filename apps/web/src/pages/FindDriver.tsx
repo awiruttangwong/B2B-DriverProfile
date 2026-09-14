@@ -369,20 +369,20 @@ export default function FindDriver() {
                   <th>อันดับ</th>
                   <th>พขร.</th>
                   <th>เบอร์โทร</th>
-                  <th>เที่ยวทั้งหมด</th>
+                  <th>จำนวนเที่ยวทั้งหมด</th>
                   {submitted?.customer && (
                     <th>
-                      <ColHead label="เที่ยวกับลูกค้า" context={submitted.customer} />
+                      <ColHead label="จำนวนเที่ยวที่วิ่งให้กับลูกค้า" context={submitted.customer} />
                     </th>
                   )}
                   {submitted?.vehicleType && (
                     <th>
-                      <ColHead label="เที่ยวประเภทรถ" context={submitted.vehicleType} />
+                      <ColHead label="จำนวนเที่ยวที่วิ่งประเภทรถ" context={submitted.vehicleType} />
                     </th>
                   )}
                   {submitted?.route.trim() && (
                     <th>
-                      <ColHead label="เที่ยวเส้นทางนี้" context={submitted.route.trim()} />
+                      <ColHead label="จำนวนเที่ยวที่วิ่งเส้นทาง" context={submitted.route.trim()} />
                     </th>
                   )}
                   <th>คะแนน</th>
@@ -392,7 +392,17 @@ export default function FindDriver() {
               <tbody>
                 {results.data.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="empty">
+                    <td
+                      // คอลัมน์พื้นฐาน 6 + คอลัมน์ตามตัวกรองที่ระบุ (0–3) — ตายตัวที่ 8 เดิม
+                      // พอดีแค่ตอนระบุ 2 ช่อง นอกนั้นแถวว่างกว้างเกินหรือขาดไปหนึ่งช่อง
+                      colSpan={
+                        6 +
+                        Number(!!submitted?.customer) +
+                        Number(!!submitted?.vehicleType) +
+                        Number(!!submitted?.route.trim())
+                      }
+                      className="empty"
+                    >
                       ไม่พบ พขร. ที่ผ่านเงื่อนไข
                     </td>
                   </tr>

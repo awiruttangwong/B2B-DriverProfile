@@ -45,11 +45,18 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     // SheetJS ก้อนใหญ่ แยกออกมาเพื่อไม่ให้หน้าแรกโหลดช้า
+    //
+    // vendor ต้องระบุ 'react-dom/client' ด้วย ไม่ใช่แค่ 'react-dom' — main.tsx import จาก
+    // react-dom/client ซึ่งเป็นคนละ entry กัน เดิมจึงหลุดไปรวมกับโค้ดแอปใน index ทั้งก้อน
+    // (vendor เหลือแค่ ~51 KB ขณะที่ index บวมเกิน 600 KB) ผลคือ deploy ทุกครั้ง แม้แก้แค่
+    // ข้อความบรรทัดเดียว ผู้ใช้ต้องโหลด react-dom กับ supabase-js ใหม่ทั้งหมด เพราะชื่อไฟล์
+    // ที่มี hash ของ index เปลี่ยน — แยกไลบรารีที่แทบไม่เปลี่ยนออกมา browser จะใช้ cache ได้
     rollupOptions: {
       output: {
         manualChunks: {
           xlsx: ['xlsx'],
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
+          data: ['@supabase/supabase-js', '@tanstack/react-query'],
         },
       },
     },

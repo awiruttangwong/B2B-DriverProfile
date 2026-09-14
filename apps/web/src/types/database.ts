@@ -205,6 +205,21 @@ export interface DriverRating {
   voided_at: string | null
 }
 
+export type ContactOutcome = 'answered' | 'no_answer' | 'accepted' | 'declined'
+
+/** table: driver_contacts — บันทึกการโทรหา พขร. หนึ่งแถวต่อการโทรหนึ่งครั้ง */
+export interface DriverContact {
+  id: string
+  driver_id: string
+  caller_id: string
+  outcome: ContactOutcome
+  note: string | null
+  called_at: string
+  created_at: string
+  updated_at: string
+  caller?: { full_name: string | null; email: string | null } | null
+}
+
 /** view: activity_log — รวมร่องรอยการกระทำของทุก user ทั้งระบบไว้จุดเดียว จำกัด admin เท่านั้น */
 export interface ActivityLogRow {
   id: string
