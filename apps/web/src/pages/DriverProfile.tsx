@@ -427,9 +427,13 @@ export default function DriverProfile() {
                         </span>
                       )}
                     </div>
-                    <p style={{ margin: '0 0 6px', fontSize: 14, color: 'var(--ink-2)' }}>
-                      {r.reason}
-                    </p>
+                    {/* เหตุผลไม่บังคับแล้ว ใบที่ไม่ได้เขียนจะเป็นสตริงว่าง ถ้าไม่กันไว้
+                        จะเหลือย่อหน้าเปล่าที่ยังกินพื้นที่แนวตั้งอยู่ */}
+                    {r.reason?.trim() && (
+                      <p style={{ margin: '0 0 6px', fontSize: 14, color: 'var(--ink-2)' }}>
+                        {r.reason}
+                      </p>
+                    )}
                     {r.tags && r.tags.length > 0 && (
                       <div className="row" style={{ gap: 5 }}>
                         {r.tags.map((t) => (

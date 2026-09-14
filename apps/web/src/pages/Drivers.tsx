@@ -5,25 +5,24 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow } from '../types/database'
 import { fmtNum, fmtPhone, fmtSince, safeSearchTerm, STATUS_LABEL } from '../lib/format'
+import { JOB_RANGE_OPTIONS } from '../lib/jobRanges'
 import ScoreCell from '../components/ScoreCell'
 import ReadinessPanel from '../components/ReadinessPanel'
 import StatusDialog from '../components/StatusDialog'
+import ClearableSelect from '../components/ClearableSelect'
 import { IconSearch, IconUsers } from '../components/icons'
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'ทั้งหมด' },
+  { value: 'active', label: 'ใช้งาน' },
+  { value: 'probation', label: 'ทดลองงาน' },
+  { value: 'inactive', label: 'พักงาน' },
+  { value: 'blacklisted', label: 'ห้ามใช้งาน' },
+]
 
 type SortKey = 'total_jobs' | 'adjusted_score' | 'last_job_date' | 'full_name'
 
 const PAGE_SIZE = 50
-
-/** ช่วงจำนวนเที่ยววิ่งขั้นต่ำ — ขอบเขตซ้อนกันตรงตัวเลขหัว-ท้ายตั้งใจ (10 อยู่ได้
- * ทั้ง "1-10" และ "10-20") เพื่อให้ป้ายกำกับตรงกับตัวเลขที่พิมพ์ไว้ตรง ๆ */
-const JOB_RANGE_OPTIONS: { value: string; label: string; min?: number; max?: number }[] = [
-  { value: '', label: 'ไม่มีกำหนด' },
-  { value: '1-10', label: '1-10 เที่ยว', min: 1, max: 10 },
-  { value: '10-20', label: '10-20 เที่ยว', min: 10, max: 20 },
-  { value: '20-100', label: '20-100 เที่ยว', min: 20, max: 100 },
-  { value: '100-200', label: '100-200 เที่ยว', min: 100, max: 200 },
-  { value: '200-300', label: '200-300 เที่ยว', min: 200, max: 300 },
-]
 
 interface DriverSuggestion {
   id: string
@@ -342,23 +341,23 @@ export default function Drivers() {
           </div>
           <div style={{ flex: '1 1 130px' }}>
             <label htmlFor="st">สถานะ</label>
-            <select id="st" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">ทั้งหมด</option>
-              <option value="active">ใช้งาน</option>
-              <option value="probation">ทดลองงาน</option>
-              <option value="inactive">พักงาน</option>
-              <option value="blacklisted">ห้ามใช้งาน</option>
-            </select>
+            <ClearableSelect
+              id="st"
+              value={status}
+              onChange={setStatus}
+              options={STATUS_OPTIONS}
+              clearLabel="ล้างตัวกรองสถานะ"
+            />
           </div>
           <div style={{ flex: '1 1 160px' }}>
             <label htmlFor="mj">จำนวนเที่ยววิ่งขั้นต่ำ</label>
-            <select id="mj" value={jobRange} onChange={(e) => setJobRange(e.target.value)}>
-              {JOB_RANGE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <ClearableSelect
+              id="mj"
+              value={jobRange}
+              onChange={setJobRange}
+              options={JOB_RANGE_OPTIONS}
+              clearLabel="ล้างตัวกรองจำนวนเที่ยว"
+            />
           </div>
         </div>
         {staleOnly && (

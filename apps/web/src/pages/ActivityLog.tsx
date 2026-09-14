@@ -11,6 +11,7 @@ import {
   fmtDateTime,
   fmtNum,
 } from '../lib/format'
+import ClearableSelect from '../components/ClearableSelect'
 import { IconClock } from '../components/icons'
 
 const PAGE_SIZE = 40
@@ -154,26 +155,32 @@ export default function ActivityLog() {
         <div className="filters-row">
           <div style={{ flex: '1 1 220px' }}>
             <label htmlFor="actor">ผู้ทำรายการ</label>
-            <select id="actor" value={actorId} onChange={(e) => setActorId(e.target.value)}>
-              <option value="">ทุกคน</option>
-              {(actors.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.full_name}
-                  {a.email ? ` · ${a.email}` : ''}
-                </option>
-              ))}
-            </select>
+            <ClearableSelect
+              id="actor"
+              value={actorId}
+              onChange={setActorId}
+              options={[
+                { value: '', label: 'ทุกคน' },
+                ...(actors.data ?? []).map((a) => ({
+                  value: a.id,
+                  label: a.email ? `${a.full_name} · ${a.email}` : a.full_name,
+                })),
+              ]}
+              clearLabel="ล้างตัวกรองผู้ทำรายการ"
+            />
           </div>
           <div style={{ flex: '1 1 200px' }}>
-            <label htmlFor="action">การกระทำ</label>
-            <select id="action" value={action} onChange={(e) => setAction(e.target.value)}>
-              <option value="">ทั้งหมด</option>
-              {Object.entries(ACTION_LABEL).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <label htmlFor="action">ประเภทกิจกรรม</label>
+            <ClearableSelect
+              id="action"
+              value={action}
+              onChange={setAction}
+              options={[
+                { value: '', label: 'ทั้งหมด' },
+                ...Object.entries(ACTION_LABEL).map(([k, label]) => ({ value: k, label })),
+              ]}
+              clearLabel="ล้างตัวกรองประเภทกิจกรรม"
+            />
           </div>
         </div>
       </div>
@@ -186,7 +193,7 @@ export default function ActivityLog() {
             <tr>
               <th>เวลา</th>
               <th>ผู้ทำรายการ</th>
-              <th>การกระทำ</th>
+              <th>ประเภทกิจกรรม</th>
               <th>เป้าหมาย</th>
               <th>รายละเอียด</th>
             </tr>
@@ -211,7 +218,7 @@ export default function ActivityLog() {
                       <IconClock size={22} />
                     </span>
                     <b>ยังไม่มีกิจกรรมที่ตรงกับเงื่อนไข</b>
-                    ลองล้างตัวกรองผู้ทำรายการหรือการกระทำ
+                    ลองล้างตัวกรองผู้ทำรายการหรือประเภทกิจกรรม
                   </div>
                 </td>
               </tr>

@@ -557,6 +557,14 @@ h3 {
   color: var(--muted);
   pointer-events: none;
 }
+/* จุดไข่ปลาช่องรหัสผ่านเล็กเกินไปตามค่าเริ่มต้นของเบราว์เซอร์ ขยายให้เห็นชัดขึ้น
+   ลด padding แนวตั้งชดเชย font-size ที่โตขึ้น ความสูงกล่องจะได้เท่าช่องอีเมลเหมือนเดิม */
+input[type='password'] {
+  font-size: 18px;
+  letter-spacing: 3px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
 /*
  * ต้องใช้ style="paddingLeft" แทนคลาสนี้ ประกาศ padding-left ที่นี่ไม่มีผล เพราะ
  * ตัวเลือก input:not([type=...])... ที่ตั้ง padding รวมไว้ก่อนหน้า มีความจำเพาะ
@@ -816,7 +824,7 @@ select:disabled {
   cursor: not-allowed;
 }
 textarea {
-  resize: vertical;
+  resize: none;
   min-height: 96px;
 }
 label {
@@ -1482,6 +1490,36 @@ th[aria-sort] .arrow {
 .combo-toggle:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* select ธรรมดาที่มีปุ่มล้าง (×) — ปิด arrow เดิมของเบราว์เซอร์แล้ววาดเองแทน
+   เพราะตำแหน่ง/ความกว้างของ arrow เดิมไม่คงที่ข้ามเบราว์เซอร์ วางปุ่มล้างชิดข้าง ๆ
+   แบบเผื่อระยะไม่ได้ */
+.select-clear {
+  position: relative;
+}
+.select-clear select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 34px;
+}
+.select-clear.has-clear select {
+  padding-right: 58px;
+}
+.select-clear-arrow {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  display: flex;
+}
+.select-clear.has-clear .select-clear-arrow {
+  right: 35px;
+}
+.select-clear .combo-clear {
+  right: 6px;
 }
 
 .combo-list {

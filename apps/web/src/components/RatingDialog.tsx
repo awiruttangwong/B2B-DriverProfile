@@ -4,20 +4,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { RatingCriteria } from '../types/database'
 
-const MIN_REASON = 20
-
-const QUICK_TAGS = [
-  'ตรงเวลา',
-  'ขับนิ่ม',
-  'ดูแลสินค้าดี',
-  'สื่อสารดี',
-  'เอกสารครบ',
-  'รายงานช้า',
-  'มาสาย',
-  'ติดต่อยาก',
-  'สินค้าเสียหาย',
-]
-
 interface Props {
   driverId: string
   driverName: string
@@ -39,8 +25,6 @@ export default function RatingDialog({
 
   const [scores, setScores] = useState<Record<string, number>>({})
   const [reason, setReason] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [assignAgain, setAssignAgain] = useState<boolean | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   const { data: criteria = [] } = useQuery({
@@ -57,13 +41,13 @@ export default function RatingDialog({
     staleTime: 30 * 60_000,
   })
 
-  const allScored = criteria.length > 0 && criteria.every((c) => scores[c.code])
+  // เกณฑ์ทุกข้อต้องมีดาวครบถึงจะบันทึกได้ — เหตุผลไม่บังคับแล้ว จึงไม่อยู่ในเงื่อนไขนี้
+  const canSubmit = criteria.length > 0 && criteria.every((c) => scores[c.code])
   const reasonLen = reason.trim().length
-  const canSubmit = allScored && reasonLen >= MIN_REASON
 
   // แสดงคะแนนรวมสด ๆ ให้ผู้ให้คะแนนเห็นผลของน้ำหนักแต่ละเกณฑ์
   const preview =
-    allScored && criteria.length
+    canSubmit
       ? criteria.reduce((sum, c) => sum + (scores[c.code] ?? 0) * Number(c.weight), 0) /
         criteria.reduce((sum, c) => sum + Number(c.weight), 0)
       : null
@@ -80,8 +64,10 @@ export default function RatingDialog({
         p_driver_id: driverId,
         p_assignment_id: assignmentId ?? null,
         p_reason: reason.trim(),
-        p_tags: tags,
-        p_assign_again: assignAgain,
+        // ไม่มีช่องกรอกแท็ก/ให้งานอีกไหมในหน้าจอแล้ว ส่งค่าว่างคงที่ไปตามสัญญาของ
+        // RPC เดิม (พารามิเตอร์ไม่มีค่า default ในฐานข้อมูล ถอดออกจาก payload ไม่ได้)
+        p_tags: [],
+        p_assign_again: null,
         p_scores: criteria
           .filter((c) => scores[c.code])
           .map((c) => ({ code: c.code, score: scores[c.code] as number })),
@@ -157,58 +143,14 @@ export default function RatingDialog({
           )}
 
           <div className="field">
-            <label htmlFor="reason">เหตุผล (บังคับ)</label>
+            <label htmlFor="reason">เหตุผล (ไม่บังคับ)</label>
             <textarea
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="เล่าสิ่งที่เกิดขึ้นจริงในงานนี้ เช่น ถึงก่อนเวลานัด 40 นาที คุมอุณหภูมิได้นิ่ง แต่โทรกลับช้าตอนติดด่าน"
+              placeholder="สิ่งที่เกิดขึ้นจริงในงานนี้ เช่น มาตรงเวลาหรือสาย ดูแลสินค้าดีหรือเสียหาย การสื่อสารระหว่างงาน"
             />
-            <div className={`hint ${reasonLen > 0 && reasonLen < MIN_REASON ? 'err' : ''}`}>
-              {reasonLen < MIN_REASON
-                ? `อีก ${MIN_REASON - reasonLen} ตัวอักษร — เหตุผลคือส่วนที่มีค่าที่สุดของระบบ ตัวเลขอย่างเดียวบอกไม่ได้ว่าทำไม`
-                : `${reasonLen} ตัวอักษร`}
-            </div>
-          </div>
-
-          <div className="field">
-            <label>แท็กสั้น ๆ</label>
-            <div className="row" style={{ gap: 6 }}>
-              {QUICK_TAGS.map((t) => {
-                const on = tags.includes(t)
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    className={`badge ${on ? 'ok' : ''}`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setTags(on ? tags.filter((x) => x !== t) : [...tags, t])}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="field">
-            <label>จะให้งานคนนี้อีกไหม</label>
-            <div className="row" style={{ gap: 8 }}>
-              <button
-                type="button"
-                className={`btn btn-sm ${assignAgain === true ? 'btn-primary' : ''}`}
-                onClick={() => setAssignAgain(assignAgain === true ? null : true)}
-              >
-                ให้อีก
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm ${assignAgain === false ? 'btn-primary' : ''}`}
-                onClick={() => setAssignAgain(assignAgain === false ? null : false)}
-              >
-                ไม่ให้แล้ว
-              </button>
-            </div>
+            {reasonLen > 0 && <div className="hint">{reasonLen} ตัวอักษร</div>}
           </div>
 
           {err && (
@@ -234,7 +176,7 @@ export default function RatingDialog({
           </div>
 
           <p className="hint" style={{ marginTop: 10 }}>
-            บันทึกแล้วลบไม่ได้ และยังไม่มีหน้าจอให้แก้ไขย้อนหลัง — ตรวจคะแนนกับเหตุผลให้ชัดก่อนกดบันทึก
+            ประเมินซ้ำเพื่อปรับปรุงผลได้ — ตรวจผลประเมินกับเหตุผลให้ชัดเจนก่อนกดบันทึก
           </p>
         </div>
       </div>
@@ -266,8 +208,6 @@ function translate(msg: string): string {
   if (msg.includes('ต้องให้คะแนนครบทุกเกณฑ์')) return msg
   if (msg.includes('driver_ratings_one_per_job'))
     return 'คุณประเมินงานนี้ไปแล้ว หนึ่งงานประเมินได้คนละหนึ่งครั้ง'
-  if (msg.includes('driver_ratings_reason_len'))
-    return `เหตุผลสั้นเกินไป ต้องอย่างน้อย ${MIN_REASON} ตัวอักษร`
   if (msg.includes('row-level security') || msg.includes('violates row-level'))
     return 'ไม่มีสิทธิ์ประเมินงานนี้ — ประเมินได้เฉพาะงานที่จบแล้วและคุณเกี่ยวข้องด้วย'
   return msg

@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow, DriverPendingReviewRow } from '../types/database'
 import { fmtDateShort, fmtNum, fmtPhone, fmtScore, safeSearchTerm } from '../lib/format'
+import { JOB_RANGE_OPTIONS } from '../lib/jobRanges'
+import ClearableSelect from '../components/ClearableSelect'
 import RatingDialog from '../components/RatingDialog'
 
 const PAGE = 40
@@ -17,13 +19,17 @@ interface TargetDriver {
 /**
  * ตัวกรองคิวรอประเมิน — แยกเป็นสองแกนที่ตอบคนละคำถาม
  *
- *   จำนวนเที่ยว   = คนนี้วิ่งมามากแค่ไหน (ประสบการณ์)
+ *   จำนวนเที่ยว   = คนนี้วิ่งมามากแค่ไหน (ประสบการณ์) — ใช้ตัวเลือกชุดเดียวกับ
+ *                    หน้ารายชื่อ พขร. (JOB_RANGE_OPTIONS) เพื่อให้ผู้ใช้เจอตัวเลือก
+ *                    เดิมทุกหน้า และเป็นช่วงปิด (เช่น "10-20 เที่ยว") ไม่ใช่ขั้นต่ำ
+ *                    เปิดปลาย เพราะคิวรอประเมินส่วนใหญ่เป็นคนวิ่งน้อย ถ้าใช้ขั้นต่ำ
+ *                    เปิดปลายหลายระดับ (เกิน 10/20/50/100) จะได้ผลลัพธ์ว่างซ้ำกัน
+ *                    แทบทุกระดับ กดเลือกอันไหนก็ดูเหมือนไม่มีอะไรเปลี่ยน
  *   วิ่งงานล่าสุด = คนนี้ยังทำงานอยู่ไหม (ความสด)
  *
  * ต้องเลือกพร้อมกันได้ เพราะรายการที่มีค่าที่สุดของหน้านี้เกิดจากการรวมสองแกน
- * เช่น "วิ่งเกิน 20 เที่ยว + ยังวิ่งอยู่ใน 30 วัน" = 15 คน (วัดจริงบน production)
- * คือคนวิ่งเยอะที่กำลังทำงานอยู่แต่ยังไม่มีใครรู้ฝีมือ ถ้ายุบเป็นรายการเดียว
- * จะเลือกแบบนี้ไม่ได้เลย
+ * เช่น "10-20 เที่ยว + ยังวิ่งอยู่ใน 30 วัน" คือคนวิ่งพอมีประสบการณ์ที่กำลังทำงาน
+ * อยู่แต่ยังไม่มีใครรู้ฝีมือ ถ้ายุบเป็นรายการเดียวจะเลือกแบบนี้ไม่ได้เลย
  *
  * ไม่มีตัวเลือก "วิ่งใน 7 วัน" เพราะข้อมูลงานมาจากการอัปโหลดไฟล์เป็นรอบ ไม่ใช่
  * ข้อมูลสด (งานล่าสุดในระบบเก่ากว่าวันนี้ 9 วันตอนที่วัด) ตัวกรองช่วงสั้นกว่านั้น
@@ -34,14 +40,6 @@ interface TargetDriver {
  * เพราะสถานะคือสิ่งที่คนตัดสินใจปิดเองอยู่แล้วเมื่อเลิกใช้งานจริง ต้องอิงเงื่อนไข
  * เดียวกันเสมอ ไม่งั้นตัวเลขจะไม่ตรงกันข้ามหน้า
  */
-const JOB_OPTIONS = [
-  { value: '', label: 'ไม่จำกัด' },
-  { value: '10', label: 'เกิน 10 เที่ยว' },
-  { value: '20', label: 'เกิน 20 เที่ยว' },
-  { value: '50', label: 'เกิน 50 เที่ยว' },
-  { value: '100', label: 'เกิน 100 เที่ยว' },
-]
-
 const DAY_OPTIONS = [
   { value: '', label: 'ไม่จำกัด' },
   { value: '30', label: 'ใน 30 วันล่าสุด' },
@@ -58,11 +56,11 @@ export default function PendingRatings() {
   // ค่าเริ่มต้น = ไม่จำกัด (ตรงกับตัวเลขบนเมนูและหน้ารายชื่อ พขร. ซึ่งนับจากสถานะ
   // active/probation ล้วน ๆ แล้ว) ไม่ผูกกับจำนวนเที่ยวเลย เพราะคนที่เพิ่งเริ่มวิ่ง
   // แล้วยังไม่มีใครรู้ฝีมือควรถูกเห็นตั้งแต่แรกเหมือนกับคนที่วิ่งมานาน
-  const [minJobs, setMinJobs] = useState('')
+  const [jobRange, setJobRange] = useState('')
   const [maxDays, setMaxDays] = useState('')
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['pending', page, minJobs, maxDays],
+    queryKey: ['pending', page, jobRange, maxDays],
     queryFn: async () => {
       let query = supabase
         .from('drivers_pending_review')
@@ -70,7 +68,9 @@ export default function PendingRatings() {
         .order('total_jobs', { ascending: false })
         .range(page * PAGE, page * PAGE + PAGE - 1)
 
-      if (minJobs) query = query.gt('total_jobs', Number(minJobs))
+      const range = JOB_RANGE_OPTIONS.find((o) => o.value === jobRange)
+      if (range?.min !== undefined) query = query.gte('total_jobs', range.min)
+      if (range?.max !== undefined) query = query.lte('total_jobs', range.max)
       if (maxDays) query = query.lte('days_since_last_job', Number(maxDays))
 
       const { data, error, count } = await query
@@ -82,7 +82,7 @@ export default function PendingRatings() {
   const pages = Math.ceil((data?.count ?? 0) / PAGE)
 
   const pick = (which: 'jobs' | 'days', value: string) => {
-    if (which === 'jobs') setMinJobs(value)
+    if (which === 'jobs') setJobRange(value)
     else setMaxDays(value)
     setPage(0)
   }
@@ -90,7 +90,7 @@ export default function PendingRatings() {
   // สรุปเงื่อนไขที่ใช้อยู่เป็นคำพูด ไม่ให้ผู้ใช้ต้องเดาว่าตัวเลขที่เห็นมาจากเงื่อนไขไหน
   const activeLabel =
     [
-      JOB_OPTIONS.find((o) => o.value === minJobs && o.value)?.label,
+      JOB_RANGE_OPTIONS.find((o) => o.value === jobRange && o.value)?.label,
       DAY_OPTIONS.find((o) => o.value === maxDays && o.value)?.label,
     ]
       .filter(Boolean)
@@ -125,7 +125,9 @@ export default function PendingRatings() {
       </div>
 
       <div className="card card-pad" style={{ marginBottom: 18 }}>
-        <label htmlFor="dsearch">ค้นหาคนขับเพื่อประเมิน (ประเมินซ้ำคนที่เคยประเมินแล้วได้)</label>
+        <label htmlFor="dsearch">
+          ค้นหาคนขับเพื่อประเมิน (ประเมินซ้ำคนที่เคยประเมินแล้วได้ เพื่อปรับปรุงผลประเมิน)
+        </label>
         <input
           id="dsearch"
           type="search"
@@ -187,28 +189,28 @@ export default function PendingRatings() {
         <div className="filters-row">
           <div style={{ flex: '1 1 170px' }}>
             <label htmlFor="fj">จำนวนเที่ยว</label>
-            <select id="fj" value={minJobs} onChange={(e) => pick('jobs', e.target.value)}>
-              {JOB_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <ClearableSelect
+              id="fj"
+              value={jobRange}
+              onChange={(v) => pick('jobs', v)}
+              options={JOB_RANGE_OPTIONS}
+              clearLabel="ล้างตัวกรองจำนวนเที่ยว"
+            />
           </div>
           <div style={{ flex: '1 1 170px' }}>
             <label htmlFor="fd">วิ่งงานล่าสุด</label>
-            <select id="fd" value={maxDays} onChange={(e) => pick('days', e.target.value)}>
-              {DAY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <ClearableSelect
+              id="fd"
+              value={maxDays}
+              onChange={(v) => pick('days', v)}
+              options={DAY_OPTIONS}
+              clearLabel="ล้างตัวกรองวิ่งงานล่าสุด"
+            />
           </div>
         </div>
 
         <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
-          เลือกสองช่องพร้อมกันได้ เช่น “เกิน 20 เที่ยว” คู่กับ “ใน 30 วันล่าสุด” จะได้คนวิ่งเยอะที่ยังทำงานอยู่ตอนนี้
+          เลือกสองช่องพร้อมกันได้ เช่น “10-20 เที่ยว” คู่กับ “ใน 30 วันล่าสุด” จะได้คนวิ่งพอมีประสบการณ์ที่ยังทำงานอยู่ตอนนี้
         </p>
       </div>
 
