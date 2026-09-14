@@ -8,10 +8,10 @@ import {
   ACTION_TONE,
   CONTACT_OUTCOME_LABEL,
   CONTACT_OUTCOME_TONE,
-  ROLE_LABEL,
   STATUS_LABEL,
   fmtDateTime,
   fmtNum,
+  roleLabel,
 } from '../lib/format'
 import ClearableSelect from '../components/ClearableSelect'
 import { IconClock } from '../components/icons'
@@ -90,7 +90,8 @@ function Detail({ row }: { row: ActivityLogRow }) {
 
   if (row.action === 'user_join') {
     const role = d.role as string
-    return <span className="badge brand">{ROLE_LABEL[role] ?? role}</span>
+    const email = d.email as string | null
+    return <span className="badge brand">{roleLabel(role, email)}</span>
   }
 
   if (row.action === 'driver_contact') {
@@ -218,7 +219,7 @@ export default function ActivityLog() {
               <th>เวลา</th>
               <th>ผู้ทำรายการ</th>
               <th>ประเภทกิจกรรม</th>
-              <th>เป้าหมาย</th>
+              <th>รายการที่เกี่ยวข้อง</th>
               <th>รายละเอียด</th>
             </tr>
           </thead>
@@ -262,7 +263,7 @@ export default function ActivityLog() {
                           {r.actor_email ?? ''}
                           {r.actor_role && (
                             <span className="badge" style={{ marginLeft: 6, fontSize: 10.5 }}>
-                              {ROLE_LABEL[r.actor_role] ?? r.actor_role}
+                              {roleLabel(r.actor_role, r.actor_email)}
                             </span>
                           )}
                         </div>

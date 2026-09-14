@@ -3,7 +3,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './lib/auth'
 import { IS_DEMO, supabase } from './lib/supabase'
-import { ROLE_LABEL, fmtNum } from './lib/format'
+import { roleLabel, fmtNum } from './lib/format'
 import {
   IconClock,
   IconLogout,
@@ -203,7 +203,9 @@ function Shell() {
                   >
                     {displayName}
                   </b>
-                  {profile && <span className="badge brand">{ROLE_LABEL[profile.role] ?? profile.role}</span>}
+                  {profile && (
+                    <span className="badge brand">{roleLabel(profile.role, profile.email)}</span>
+                  )}
                 </span>
               </div>
               <button className="signout" onClick={() => void signOut()}>

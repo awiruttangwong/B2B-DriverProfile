@@ -163,3 +163,16 @@ export const ROLE_LABEL: Record<string, string> = {
   ops: 'ฝ่ายปฏิบัติการ',
   viewer: 'อ่านอย่างเดียว',
 }
+
+/**
+ * มีหลายบัญชีที่ role เป็น admin ในฐานข้อมูล (สิทธิ์เท่ากันหมด) แต่มีเจ้าของระบบตัวจริง
+ * แค่คนเดียว — แยกด้วยอีเมลแทน role เพราะ role ทุก admin เหมือนกันหมด แยกด้วย role
+ * ไม่ได้ ป้าย "ผู้ดูแลระบบ" จึงผูกกับอีเมลนี้โดยเฉพาะ ไม่ใช่ทุกคนที่ role เป็น admin
+ */
+const OWNER_EMAIL = 'awirut.tan@2klogistics.co.th'
+
+export function roleLabel(role: string | null | undefined, email?: string | null): string {
+  if (email === OWNER_EMAIL) return 'ผู้ดูแลระบบ'
+  if (!role) return '—'
+  return ROLE_LABEL[role] ?? role
+}
