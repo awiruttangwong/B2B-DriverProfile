@@ -362,24 +362,30 @@ export default function FindDriver() {
 
       {results.data && (
         <>
-          <div className="tablewrap">
+          <div className="tablewrap fit-table">
             <table>
               <thead>
                 <tr>
-                  <th className="right">อันดับ</th>
+                  <th>อันดับ</th>
                   <th>พขร.</th>
                   <th>เบอร์โทร</th>
-                  <th className="right">จำนวนเที่ยวรวมทุกลูกค้า</th>
+                  <th>เที่ยวทั้งหมด</th>
                   {submitted?.customer && (
-                    <th className="right">จำนวนเที่ยวที่วิ่งให้ {submitted.customer}</th>
+                    <th>
+                      <ColHead label="เที่ยวกับลูกค้า" context={submitted.customer} />
+                    </th>
                   )}
                   {submitted?.vehicleType && (
-                    <th className="right">จำนวนเที่ยวที่วิ่งรถแบบ {submitted.vehicleType}</th>
+                    <th>
+                      <ColHead label="เที่ยวประเภทรถ" context={submitted.vehicleType} />
+                    </th>
                   )}
                   {submitted?.route.trim() && (
-                    <th className="right">จำนวนเที่ยวที่วิ่งเส้นทาง &ldquo;{submitted.route.trim()}&rdquo;</th>
+                    <th>
+                      <ColHead label="เที่ยวเส้นทางนี้" context={submitted.route.trim()} />
+                    </th>
                   )}
-                  <th className="right">คะแนน</th>
+                  <th>คะแนน</th>
                   <th>งานล่าสุด</th>
                 </tr>
               </thead>
@@ -393,8 +399,8 @@ export default function FindDriver() {
                 )}
                 {results.data.map((r, i) => (
                   <tr key={r.driver_id}>
-                    <td className="right num muted">{i + 1}</td>
-                    <td>
+                    <td className="num muted">{i + 1}</td>
+                    <td className="nowrap">
                       <Link to={`/drivers/${r.driver_id}`} style={{ fontWeight: 500 }}>
                         {r.full_name}
                       </Link>
@@ -403,21 +409,13 @@ export default function FindDriver() {
                       </div>
                     </td>
                     <td className="mono nowrap">{fmtPhone(r.phone)}</td>
-                    <td className="right num">{fmtNum(r.total_jobs)}</td>
-                    {submitted?.customer && (
-                      <td className="right num" style={{ fontWeight: r.customer_jobs ? 600 : 400 }}>
-                        {fmtNum(r.customer_jobs)}
-                      </td>
-                    )}
+                    <td className="num">{fmtNum(r.total_jobs)}</td>
+                    {submitted?.customer && <td className="num">{fmtNum(r.customer_jobs)}</td>}
                     {submitted?.vehicleType && (
-                      <td className="right num">{fmtNum(r.vehicle_type_jobs)}</td>
+                      <td className="num">{fmtNum(r.vehicle_type_jobs)}</td>
                     )}
-                    {submitted?.route.trim() && (
-                      <td className="right num" style={{ fontWeight: r.route_jobs ? 600 : 400 }}>
-                        {fmtNum(r.route_jobs)}
-                      </td>
-                    )}
-                    <td className="right num">
+                    {submitted?.route.trim() && <td className="num">{fmtNum(r.route_jobs)}</td>}
+                    <td className="num">
                       {r.rating_count > 0 ? (
                         <>
                           {fmtScore(r.adjusted_score)}
@@ -427,7 +425,7 @@ export default function FindDriver() {
                           </span>
                         </>
                       ) : (
-                        <span className="muted" style={{ fontSize: 12 }}>
+                        <span className="muted nowrap" style={{ fontSize: 12 }}>
                           ยังไม่มี
                         </span>
                       )}
@@ -469,5 +467,25 @@ export default function FindDriver() {
         </>
       )}
     </main>
+  )
+}
+
+/**
+ * หัวคอลัมน์สองบรรทัด — บรรทัดบนเป็นชื่อคอลัมน์สั้นคงที่ บรรทัดล่างเป็นค่าที่ผู้ใช้
+ * ระบุมา (ชื่อลูกค้า/ประเภทรถ/เส้นทาง) ซึ่งยาวไม่จำกัด
+ *
+ * เดิมยัดทุกอย่างไว้บรรทัดเดียว ("จำนวนเที่ยวที่วิ่งเส้นทาง ...") ความกว้างคอลัมน์
+ * จึงถูกชื่อเส้นทางลากให้กว้างตามจนบีบคอลัมน์ชื่อ พขร. เหลือ 3 บรรทัดต่อคน
+ * แยกบรรทัดแล้วตัดท้ายด้วย ellipsis ทำให้ความกว้างถูกกำหนดโดยป้ายสั้นแทน
+ * ส่วนค่าเต็มยังอ่านได้จาก title ตอนชี้เมาส์
+ */
+function ColHead({ label, context }: { label: string; context: string }) {
+  return (
+    <>
+      {label}
+      <span className="col-head-sub" title={context}>
+        {context}
+      </span>
+    </>
   )
 }

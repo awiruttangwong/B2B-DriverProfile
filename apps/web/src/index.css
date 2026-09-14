@@ -986,8 +986,39 @@ th.right {
 .drivers-table td:first-child .sk {
   margin-left: 0;
 }
-td.nowrap {
+td.nowrap,
+.nowrap {
   white-space: nowrap;
+}
+
+/* ตารางอันดับ (หน้าหา พขร. เพื่อเข้ารับงาน) — จัดกึ่งกลางทุกคอลัมน์เหมือนหน้ารายชื่อ
+   พขร. ยกเว้นคอลัมน์ชื่อคนที่ชิดซ้ายเพราะเป็นคอลัมน์ระบุตัวตน ไม่ใช่ค่าตัวเลข */
+.fit-table th,
+.fit-table td {
+  text-align: center;
+}
+.fit-table th:nth-child(2),
+.fit-table td:nth-child(2) {
+  text-align: left;
+}
+/* ห้ามหัวคอลัมน์ตัดคำกลางคำ — ภาษาไทยไม่มีช่องว่างระหว่างคำ เบราว์เซอร์จึงตัดตรงไหน
+   ก็ได้ถ้าปล่อยไว้ ("ความ" กลายเป็น "ค" ขึ้นบรรทัดใหม่เป็น "วาม") */
+.fit-table th {
+  white-space: nowrap;
+}
+
+/* บรรทัดล่างของหัวคอลัมน์ = ค่าที่ผู้ใช้ระบุ (ลูกค้า/ประเภทรถ/เส้นทาง) ยาวไม่จำกัด
+   ตัดท้ายเป็นคำ ๆ ด้วย … ไม่ให้ลากความกว้างคอลัมน์ตาม ค่าเต็มดูได้จาก title */
+.col-head-sub {
+  display: block;
+  max-width: 22ch;
+  margin: 1px auto 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 /* ตารางในการ์ดแคบ เช่นคอลัมน์ขวาของหน้าโปรไฟล์ (กว้างจริงราว 415px)
