@@ -158,7 +158,7 @@ export default function ReadinessPanel({
           <div style={{ marginTop: 14 }}>
             <Link to="/pending" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
               <IconStar size={14} />
-              {reviewed === 0 ? 'เริ่มประเมิน' : 'ไปประเมินคนที่ค้าง'}
+              เริ่มประเมิน
             </Link>
           </div>
         </section>
