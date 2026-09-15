@@ -433,20 +433,18 @@ export default function FindDriver() {
             </table>
           </div>
 
-          {totalCount > 0 && (
+          {results.data.length < totalCount && (
             <div style={{ textAlign: 'center', marginTop: 12 }}>
               <p className="muted" style={{ fontSize: 13, margin: '0 0 8px' }}>
                 แสดง {fmtNum(results.data.length)} จาก {fmtNum(totalCount)} คน
               </p>
-              {results.data.length < totalCount && (
-                <button
-                  className="btn btn-sm"
-                  disabled={results.isFetching}
-                  onClick={() => setLimit((l) => Math.min(l + 25, totalCount))}
-                >
-                  {results.isFetching ? 'กำลังโหลด…' : 'โหลดเพิ่ม 25 คน'}
-                </button>
-              )}
+              <button
+                className="btn btn-sm"
+                disabled={results.isFetching}
+                onClick={() => setLimit((l) => Math.min(l + 25, totalCount))}
+              >
+                {results.isFetching ? 'กำลังโหลด…' : 'โหลดเพิ่ม 25 คน'}
+              </button>
             </div>
           )}
         </>
