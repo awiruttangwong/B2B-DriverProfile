@@ -1423,8 +1423,7 @@ th[aria-sort] .arrow {
 .score-cell .score-value.low {
   color: var(--warn);
 }
-/* จำนวนครั้งที่ประเมิน — ใส่เป็นชิปสีอ่อนแทนข้อความเปล่า ๆ ให้ตัวเลขในชิปเด่น
-   กว่าคำอธิบายรอบข้าง อ่านลำดับความสำคัญได้ทันทีว่าตัวเลขคือของจริง */
+/* จำนวนครั้งที่ประเมิน — ใส่เป็นชิปสีอ่อนแทนข้อความเปล่า ๆ */
 .score-cell .score-count {
   display: inline-flex;
   align-items: baseline;
@@ -1435,11 +1434,6 @@ th[aria-sort] .arrow {
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
-}
-.score-cell .score-count .num {
-  font-weight: 700;
-  font-size: 12px;
-  color: var(--brand);
 }
 
 .bar {
