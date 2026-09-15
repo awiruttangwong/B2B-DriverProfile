@@ -346,8 +346,9 @@ async function applyUpdate(table: string, patch: Row, filters: Filter[]): Promis
 
 /**
  * เรียงด้วยข้อมูลจริงหลายชั้น ไม่มีคะแนนผสมสูตรเดียว — จำลอง search_drivers()
- * ใน supabase/migrations/0017_search_drivers_require_match.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
- * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง ต้องมีประสบการณ์จริงตรงทุกเงื่อนไขที่ระบุก่อนขึ้นกลุ่มบน)
+ * ใน supabase/migrations/0018_search_drivers_hard_filter.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
+ * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง ถ้าระบุเงื่อนไขมาต้องมีประสบการณ์จริงตรงทุกเงื่อนไข
+ * นั้น ไม่งั้นตัดออกจากผลลัพธ์ไปเลย ไม่ใช่แค่จัดลำดับใหม่)
  * (เวอร์ชันก่อนหน้าเคยผสมคะแนนคุณภาพงาน/ตรงเวลาที่ไม่มีข้อมูลจริงรองรับเข้าไปด้วย
  * ตัดทิ้งเพราะเป็นค่าที่มโนขึ้นเอง ไม่ใช่ข้อมูลจริงจากผู้ใช้)
  */
@@ -374,7 +375,10 @@ async function searchDrivers(p: {
     byDriver.set(id, e)
   }
 
-  const rows = dir
+  const matches = (x: { customer_jobs: number; vehicle_type_jobs: number; route_jobs: number }) =>
+    (!cust || x.customer_jobs > 0) && (!vt || x.vehicle_type_jobs > 0) && (!kw || x.route_jobs > 0)
+
+  const eligible = dir
     .filter((d) => d.status === 'active' || d.status === 'probation')
     .map((d) => {
       const e = byDriver.get(String(d.id)) ?? { c: 0, v: 0, r: 0 }
@@ -393,6 +397,11 @@ async function searchDrivers(p: {
         _problems: (d.recent_problem_jobs as number) ?? 0,
       }
     })
+    // ถ้าระบุเงื่อนไขมา ตัดคนที่ไม่เคยมีประสบการณ์ตรงกับเงื่อนไขนั้นออกไปเลย (เหมือน 0018)
+    .filter((x) => !(cust || vt || kw) || matches(x))
+
+  const rows = eligible
+    .slice()
     .sort((a, b) => {
       const problems = a._problems - b._problems
       if (problems !== 0) return problems
@@ -401,11 +410,6 @@ async function searchDrivers(p: {
         Number(x.adjusted_score !== null && x.adjusted_score < 3)
       const lowRank = low(a) - low(b)
       if (lowRank !== 0) return lowRank
-      // ต้องมีประสบการณ์จริงตรงกับทุกเงื่อนไขที่ระบุมาก่อน ถึงจะขึ้นกลุ่มบน (เหมือน 0017)
-      const matches = (x: { customer_jobs: number; vehicle_type_jobs: number; route_jobs: number }) =>
-        Number((!cust || x.customer_jobs > 0) && (!vt || x.vehicle_type_jobs > 0) && (!kw || x.route_jobs > 0))
-      const matchRank = matches(b) - matches(a)
-      if (matchRank !== 0) return matchRank
       const customer = b.customer_jobs - a.customer_jobs
       if (customer !== 0) return customer
       const vtype = b.vehicle_type_jobs - a.vehicle_type_jobs
@@ -419,7 +423,7 @@ async function searchDrivers(p: {
       return String(b.last_job_date ?? '').localeCompare(String(a.last_job_date ?? ''))
     })
     .slice(0, p.p_limit ?? 25)
-    .map(({ _problems: _, ...row }) => row)
+    .map(({ _problems: _, ...row }) => ({ ...row, total_count: eligible.length }))
 
   return { data: rows, error: null }
 }

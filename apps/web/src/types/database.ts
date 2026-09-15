@@ -153,7 +153,11 @@ export interface DriverReviewRow {
  *
  * ไม่มีคะแนนผสมสูตรเดียว (เช่น fit_score) เพราะข้อมูลจริงยังไม่ครบพอจะคำนวณแบบนั้น
  * ได้อย่างซื่อสัตย์ — เรียงลำดับด้วยข้อมูลจริงหลายชั้นแทน ดู order by ใน
- * supabase/migrations/0009_search_drivers_real_signals.sql
+ * supabase/migrations/0018_search_drivers_hard_filter.sql
+ *
+ * ถ้าระบุลูกค้า/ประเภทรถ/เส้นทางมา คนที่ไม่เคยมีประสบการณ์ตรงกับเงื่อนไขนั้นจะ
+ * ไม่ถูกส่งกลับมาเลย (hard filter ตั้งแต่ 0018) — total_count คือจำนวนคนที่ผ่าน
+ * ตัวกรองทั้งหมด ไม่ใช่แค่จำนวนแถวในหน้านี้ (หลัง limit)
  */
 export interface DriverFitRow {
   driver_id: string
@@ -167,6 +171,7 @@ export interface DriverFitRow {
   adjusted_score: number | null
   rating_count: number
   last_job_date: string | null
+  total_count: number
 }
 
 /** view: driver_status_log — ใครเปลี่ยนสถานะ เมื่อไร เพราะอะไร */
