@@ -346,9 +346,10 @@ async function applyUpdate(table: string, patch: Row, filters: Filter[]): Promis
 
 /**
  * เรียงด้วยข้อมูลจริงหลายชั้น ไม่มีคะแนนผสมสูตรเดียว — จำลอง search_drivers()
- * ใน supabase/migrations/0018_search_drivers_hard_filter.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
- * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง ถ้าระบุเงื่อนไขมาต้องมีประสบการณ์จริงตรงทุกเงื่อนไข
- * นั้น ไม่งั้นตัดออกจากผลลัพธ์ไปเลย ไม่ใช่แค่จัดลำดับใหม่)
+ * ใน supabase/migrations/0019_search_drivers_route_soft_order.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
+ * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง) — ลูกค้า/ประเภทรถมาจากรหัสมาตรฐาน (dropdown)
+ * จึง hard filter ตัดคนไม่ตรงออกได้เลย ส่วนเส้นทางเป็นข้อความอิสระ (พิมพ์เอง จับคู่แบบ
+ * includes) เสี่ยงพิมพ์ไม่ตรงเป๊ะ จึงเป็นแค่สัญญาณจัดลำดับ (soft) ไม่ตัดใครออก
  * (เวอร์ชันก่อนหน้าเคยผสมคะแนนคุณภาพงาน/ตรงเวลาที่ไม่มีข้อมูลจริงรองรับเข้าไปด้วย
  * ตัดทิ้งเพราะเป็นค่าที่มโนขึ้นเอง ไม่ใช่ข้อมูลจริงจากผู้ใช้)
  */
@@ -375,8 +376,9 @@ async function searchDrivers(p: {
     byDriver.set(id, e)
   }
 
-  const matches = (x: { customer_jobs: number; vehicle_type_jobs: number; route_jobs: number }) =>
-    (!cust || x.customer_jobs > 0) && (!vt || x.vehicle_type_jobs > 0) && (!kw || x.route_jobs > 0)
+  // hard filter เฉพาะลูกค้า/ประเภทรถ (รหัสมาตรฐาน) — เส้นทางเป็นข้อความอิสระ ไม่ตัดออก
+  const matches = (x: { customer_jobs: number; vehicle_type_jobs: number }) =>
+    (!cust || x.customer_jobs > 0) && (!vt || x.vehicle_type_jobs > 0)
 
   const eligible = dir
     .filter((d) => d.status === 'active' || d.status === 'probation')
@@ -397,8 +399,8 @@ async function searchDrivers(p: {
         _problems: (d.recent_problem_jobs as number) ?? 0,
       }
     })
-    // ถ้าระบุเงื่อนไขมา ตัดคนที่ไม่เคยมีประสบการณ์ตรงกับเงื่อนไขนั้นออกไปเลย (เหมือน 0018)
-    .filter((x) => !(cust || vt || kw) || matches(x))
+    // ระบุลูกค้า/ประเภทรถมาแล้วไม่เคยมีประสบการณ์ตรง ตัดออกไปเลย (เหมือน 0019)
+    .filter(matches)
 
   const rows = eligible
     .slice()
