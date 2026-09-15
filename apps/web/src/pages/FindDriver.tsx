@@ -420,7 +420,7 @@ export default function FindDriver() {
                         </>
                       ) : (
                         <span className="muted nowrap" style={{ fontSize: 12 }}>
-                          ยังไม่มี
+                          ยังไม่ประเมิน
                         </span>
                       )}
                     </td>

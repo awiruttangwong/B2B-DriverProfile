@@ -297,7 +297,7 @@ export default function DriverProfile() {
             ) : (
               <div style={{ textAlign: 'right' }}>
                 <div className="score-none" style={{ fontSize: 15 }}>
-                  ยังไม่มีคะแนน
+                  ยังไม่ประเมิน
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>
                   ประเมินได้ที่หน้า <Link to="/pending">รอประเมิน</Link>

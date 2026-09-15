@@ -19,7 +19,7 @@ export default function ScoreCell({
   const n = count ?? 0
 
   if (n === 0 || score === null || score === undefined) {
-    return <span className="score-none">ยังไม่มีคะแนน</span>
+    return <span className="score-none">ยังไม่ประเมิน</span>
   }
 
   const low = score < 3.5
