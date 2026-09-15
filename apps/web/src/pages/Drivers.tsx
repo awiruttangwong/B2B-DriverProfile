@@ -386,7 +386,7 @@ export default function Drivers() {
               <th>เบอร์โทร</th>
               <Th k="total_jobs">เที่ยววิ่งสะสม</Th>
               <Th k="adjusted_score" className="col-score">
-                คะแนน
+                คะแนนประเมิน
               </Th>
               <Th k="last_job_date">งานล่าสุด</Th>
               <th>สถานะ</th>

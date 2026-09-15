@@ -369,7 +369,7 @@ export default function FindDriver() {
                       <ColHead label="จำนวนเที่ยวที่วิ่งเส้นทาง" context={submitted.route.trim()} />
                     </th>
                   )}
-                  <th>คะแนน</th>
+                  <th>คะแนนประเมิน</th>
                   <th>งานล่าสุด</th>
                 </tr>
               </thead>
