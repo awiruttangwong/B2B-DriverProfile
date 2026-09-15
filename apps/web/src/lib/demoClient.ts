@@ -346,8 +346,8 @@ async function applyUpdate(table: string, patch: Row, filters: Filter[]): Promis
 
 /**
  * เรียงด้วยข้อมูลจริงหลายชั้น ไม่มีคะแนนผสมสูตรเดียว — จำลอง search_drivers()
- * ใน supabase/migrations/0012_ranking_quality_gate.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
- * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง)
+ * ใน supabase/migrations/0017_search_drivers_require_match.sql (คะแนนใช้คัดคนที่ไม่ควรส่ง
+ * ประสบการณ์ตรงงานใช้เลือกคนที่ควรส่ง ต้องมีประสบการณ์จริงตรงทุกเงื่อนไขที่ระบุก่อนขึ้นกลุ่มบน)
  * (เวอร์ชันก่อนหน้าเคยผสมคะแนนคุณภาพงาน/ตรงเวลาที่ไม่มีข้อมูลจริงรองรับเข้าไปด้วย
  * ตัดทิ้งเพราะเป็นค่าที่มโนขึ้นเอง ไม่ใช่ข้อมูลจริงจากผู้ใช้)
  */
@@ -401,6 +401,11 @@ async function searchDrivers(p: {
         Number(x.adjusted_score !== null && x.adjusted_score < 3)
       const lowRank = low(a) - low(b)
       if (lowRank !== 0) return lowRank
+      // ต้องมีประสบการณ์จริงตรงกับทุกเงื่อนไขที่ระบุมาก่อน ถึงจะขึ้นกลุ่มบน (เหมือน 0017)
+      const matches = (x: { customer_jobs: number; vehicle_type_jobs: number; route_jobs: number }) =>
+        Number((!cust || x.customer_jobs > 0) && (!vt || x.vehicle_type_jobs > 0) && (!kw || x.route_jobs > 0))
+      const matchRank = matches(b) - matches(a)
+      if (matchRank !== 0) return matchRank
       const customer = b.customer_jobs - a.customer_jobs
       if (customer !== 0) return customer
       const vtype = b.vehicle_type_jobs - a.vehicle_type_jobs
