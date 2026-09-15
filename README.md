@@ -61,7 +61,7 @@ supabase db push
 ### 2. แปลงไฟล์ Excel เป็น CSV
 
 ```bash
-python scripts/etl_excel.py "IMPORT SUM ALL DATA DAILY B2B EXPRESS .xlsx" --out data/out
+python scripts/etl_excel.py "data/raw/IMPORT SUM ALL DATA DAILY B2B EXPRESS .xlsx" --out data/out
 ```
 
 ไม่ต้องระบุชีต — ค่าเริ่มต้นคือ `--sheet auto` ซึ่งสแกนทุกชีตแล้วใช้ชีตที่อ่านได้ทั้งหมด
@@ -263,7 +263,7 @@ adjusted = (m × 5 + Σ sᵢ·wᵢ) / (5 + Σ wᵢ)       m = ค่าเฉล
 ให้รันทุกครั้งที่แก้ `normalize.ts`, `cleaning.ts`, `sourceProfiles.ts` หรือ `etl_excel.py`
 
 ```bash
-node scripts/verify_parity.mjs "IMPORT SUM ALL DATA DAILY B2B EXPRESS .xlsx"
+node scripts/verify_parity.mjs "data/raw/IMPORT SUM ALL DATA DAILY B2B EXPRESS .xlsx"
 python scripts/validate_csv.py      # ตรวจ FK / CHECK / ชนิดข้อมูล ก่อนโหลดเข้า DB
 ```
 

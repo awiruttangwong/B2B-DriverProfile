@@ -102,7 +102,9 @@ async function main() {
   const args = process.argv.slice(2)
   const outIdx = args.indexOf('--out')
   const outDir = outIdx >= 0 ? args[outIdx + 1] : path.join(root, 'data/out')
-  const excel = args.find((a) => !a.startsWith('--') && a !== outDir) ?? path.join(root, 'ALLMANUAL_cleaned.xlsx')
+  const excel =
+    args.find((a) => !a.startsWith('--') && a !== outDir) ??
+    path.join(root, 'data/raw/ALLMANUAL_cleaned.xlsx')
 
   const { mod, cleanup } = await loadWebModules()
   try {

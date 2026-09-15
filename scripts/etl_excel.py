@@ -5,7 +5,7 @@ etl_excel.py — แปลง ALLMANUAL_cleaned.xlsx เป็นตาราง
 ใช้ UUID แบบ deterministic (uuid5 จากคีย์ธรรมชาติ) ทำให้รันซ้ำกี่ครั้งก็ได้ id เดิม
 อัปโหลดไฟล์เดิมซ้ำจึงไม่เกิดข้อมูลซ้ำ (ON CONFLICT DO NOTHING จับได้)
 
-    python scripts/etl_excel.py ALLMANUAL_cleaned.xlsx --out data/out
+    python scripts/etl_excel.py data/raw/ALLMANUAL_cleaned.xlsx --out data/out
 
 ผลลัพธ์: CSV หนึ่งไฟล์ต่อหนึ่งตาราง + load.sql + report.txt
 """
@@ -246,7 +246,7 @@ def resolve_driver_identity(df: pd.DataFrame) -> dict[tuple[str, str], str]:
 # ---------------------------------------------------------------------- main
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("excel", nargs="?", default="ALLMANUAL_cleaned.xlsx")
+    ap.add_argument("excel", nargs="?", default="data/raw/ALLMANUAL_cleaned.xlsx")
     ap.add_argument(
         "--sheet",
         default="auto",
