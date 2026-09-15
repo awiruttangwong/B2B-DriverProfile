@@ -1400,6 +1400,32 @@ th[aria-sort] .arrow {
   font-size: 13.5px;
 }
 
+/* คอลัมน์คะแนนในหน้ารายชื่อ พขร. — ชิดซ้ายแทนกึ่งกลางเหมือนคอลัมน์อื่น เพราะความกว้าง
+   ของเนื้อหา (แถบดาว+ตัวเลข+จำนวนครั้ง) ไม่เท่ากันทุกแถว ถ้ากึ่งกลางแล้วจุดเริ่มต้นของ
+   แถบดาวจะขยับซ้าย-ขวาสลับกันไปทีละแถว มองเป็นแนวตั้งแล้วดูรก เทียบกันยาก */
+.drivers-table th.col-score,
+.drivers-table td.col-score {
+  text-align: left;
+}
+
+/* แถวคะแนน — ชิดซ้ายเสมอ ไม่พึ่ง .row เพราะ .drivers-table td .row บังคับกึ่งกลางไว้
+   ให้ตัวเลขคะแนนกว้างคงที่ (tabular-nums + min-width) จุดเริ่มต้นของแถบดาวจึงอยู่ตำแหน่ง
+   เดียวกันทุกแถวเป๊ะ ๆ อ่านเทียบกันได้ง่ายเหมือนคอลัมน์ตัวเลขทั่วไป */
+.score-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.score-cell .score-value {
+  font-weight: 600;
+  min-width: 34px;
+}
+.score-cell .score-count {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 /* แถบคะแนนแบบ 5 ขีด — อ่านค่าได้โดยไม่ต้องพึ่งสีอย่างเดียว */
 .pips {
   display: inline-flex;

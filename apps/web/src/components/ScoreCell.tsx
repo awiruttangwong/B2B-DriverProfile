@@ -26,18 +26,14 @@ export default function ScoreCell({
   const low = score < 3.5
 
   return (
-    <span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
+    <span className="score-cell">
       <span className="pips" role="img" aria-label={`${fmtScore(score)} จาก 5 คะแนน`}>
         {[1, 2, 3, 4, 5].map((i) => (
           <i key={i} className={i <= filled ? (low ? 'on low' : 'on') : ''} />
         ))}
       </span>
-      <span className="num" style={{ fontWeight: 600 }}>
-        {fmtScore(score)}
-      </span>
-      <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-        {n} ครั้ง
-      </span>
+      <span className="score-value num">{fmtScore(score)}</span>
+      <span className="score-count">{n} ครั้ง</span>
     </span>
   )
 }

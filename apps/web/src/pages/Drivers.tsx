@@ -291,11 +291,11 @@ export default function Drivers() {
     }
   }
 
-  function Th({ k, children }: { k: SortKey; children: string }) {
+  function Th({ k, children, className }: { k: SortKey; children: string; className?: string }) {
     const on = sort === k
     return (
       <th
-        className="sortable"
+        className={`sortable${className ? ` ${className}` : ''}`}
         aria-sort={on ? (asc ? 'ascending' : 'descending') : undefined}
         onClick={() => toggleSort(k)}
         tabIndex={0}
@@ -385,7 +385,9 @@ export default function Drivers() {
               <Th k="full_name">พขร.</Th>
               <th>เบอร์โทร</th>
               <Th k="total_jobs">เที่ยววิ่งสะสม</Th>
-              <Th k="adjusted_score">คะแนน</Th>
+              <Th k="adjusted_score" className="col-score">
+                คะแนน
+              </Th>
               <Th k="last_job_date">งานล่าสุด</Th>
               <th>สถานะ</th>
             </tr>
@@ -443,7 +445,7 @@ export default function Drivers() {
                   </td>
                   <td className="mono nowrap">{fmtPhone(d.phone)}</td>
                   <td className="num">{fmtNum(d.total_jobs)}</td>
-                  <td>
+                  <td className="col-score">
                     <ScoreCell score={d.adjusted_score} count={d.rating_count} />
                   </td>
                   <td className="nowrap muted" style={{ fontSize: 13 }}>
