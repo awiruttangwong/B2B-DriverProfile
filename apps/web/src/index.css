@@ -1417,7 +1417,6 @@ th[aria-sort] .arrow {
   gap: 10px;
 }
 .score-cell .score-value {
-  font-weight: 600;
   min-width: 34px;
 }
 .score-cell .score-value.low {
