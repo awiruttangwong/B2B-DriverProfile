@@ -191,6 +191,8 @@ h3 {
 .demo-bar {
   background: var(--warn-soft);
   color: var(--warn);
+  /* เบราว์เซอร์ที่ไม่รู้จัก color-mix() จะข้ามบรรทัดถัดไปทั้งบรรทัด เหลือแค่นี้ทำงานแทน */
+  border-bottom: 1px solid var(--warn);
   border-bottom: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
   padding: 6px 20px;
   font-size: 12.5px;
@@ -1131,12 +1133,14 @@ label {
 /* ปุ่มที่ผลลัพธ์ของการกดคือ "ได้ไฟล์มา" — ชี้ด้วยสีเขียวตอนชี้เมาส์ */
 .btn-download:hover:not(:disabled) {
   background: var(--good-soft);
+  border-color: var(--good);
   border-color: color-mix(in srgb, var(--good) 45%, transparent);
   color: var(--good);
 }
 /* ปุ่มที่ผลลัพธ์ของการกดคือ "ยกเลิก/ปิดโดยไม่บันทึก" — ชี้ด้วยสีแดงตอนชี้เมาส์ */
 .btn-cancel:hover:not(:disabled) {
   background: var(--bad-soft);
+  border-color: var(--bad);
   border-color: color-mix(in srgb, var(--bad) 45%, transparent);
   color: var(--bad);
 }
@@ -1148,7 +1152,9 @@ label {
   color: #fff;
 }
 .btn-danger:hover:not(:disabled) {
+  background: var(--bad);
   background: color-mix(in srgb, var(--bad) 88%, #000);
+  border-color: var(--bad);
   border-color: color-mix(in srgb, var(--bad) 88%, #000);
 }
 /* โหมดมืด --bad เป็นแดงอ่อน (#ef8078) ตัวหนังสือขาวบนสีนี้ได้แค่ ~2.6:1 ไม่ผ่านเกณฑ์
@@ -1346,16 +1352,19 @@ th[aria-sort] .arrow {
 }
 .badge.ok {
   background: var(--good-soft);
+  border-color: var(--good);
   border-color: color-mix(in srgb, var(--good) 40%, transparent);
   color: var(--good);
 }
 .badge.warn {
   background: var(--warn-soft);
+  border-color: var(--warn);
   border-color: color-mix(in srgb, var(--warn) 40%, transparent);
   color: var(--warn);
 }
 .badge.bad {
   background: var(--bad-soft);
+  border-color: var(--bad);
   border-color: color-mix(in srgb, var(--bad) 40%, transparent);
   color: var(--bad);
 }
