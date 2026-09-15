@@ -115,12 +115,14 @@ export default function ReadinessPanel({
               sub="ตั้งแต่ 10 เที่ยวขึ้นไป"
               value={regular ?? 0}
               of={total}
+              showValue={false}
             />
             <Meter
               label="วิ่งงานใน 30 วันล่าสุด"
               sub="พร้อมรับงานตอนนี้"
               value={recent ?? 0}
               of={total}
+              showValue={false}
             />
           </div>
 
