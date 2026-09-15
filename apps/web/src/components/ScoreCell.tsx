@@ -38,11 +38,6 @@ export default function ScoreCell({
       <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
         {n} รีวิว
       </span>
-      {n < 3 && (
-        <span className="badge warn" title="รีวิวยังน้อย คะแนนยังไม่นิ่ง">
-          ข้อมูลน้อย
-        </span>
-      )}
     </span>
   )
 }
