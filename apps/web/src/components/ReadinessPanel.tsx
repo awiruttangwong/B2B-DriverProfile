@@ -35,12 +35,15 @@ function Meter({
   value,
   of,
   tone,
+  showValue = true,
 }: {
   label: string
   sub?: string
   value: number
   of: number
   tone?: 'warn'
+  /** ซ่อนตัวเลขดิบ ให้เห็นแค่ % — ใช้ตอนตัวเลขดิบลอย ๆ ไม่มีความหมายเท่า % เทียบเพดาน */
+  showValue?: boolean
 }) {
   const pct = of > 0 ? (value / of) * 100 : 0
   return (
@@ -50,7 +53,7 @@ function Meter({
           {label} {sub && <small>{sub}</small>}
         </span>
         <span className="meter-val">
-          {fmtNum(value)}
+          {showValue && fmtNum(value)}
           <span className="pct">{pct.toFixed(1)}%</span>
         </span>
       </div>
@@ -135,6 +138,7 @@ export default function ReadinessPanel({
             value={reviewed}
             of={scope}
             tone={reviewed === 0 ? 'warn' : undefined}
+            showValue={false}
           />
 
           <p className="coverage-note">
