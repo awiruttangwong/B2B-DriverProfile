@@ -6,8 +6,8 @@ import { fmtScore } from '../lib/format'
  * ตัวเลขอย่างเดียวหลอกตาได้ — 5.00 จากการประเมินครั้งเดียวดูดีกว่า 4.42 จาก 37 ครั้ง
  * ทั้งที่ความจริงตรงกันข้าม จึงต้องแสดงจำนวนครั้งคู่กันเสมอ
  *
- * แถบ 5 ขีดช่วยให้กวาดสายตาเทียบกันได้ทั้งคอลัมน์โดยไม่ต้องอ่านตัวเลขทีละตัว
- * และไม่ได้สื่อความหมายด้วยสีอย่างเดียว (มีทั้งตัวเลขและจำนวนขีด)
+ * คะแนนต่ำกว่า 3.5 เปลี่ยนสีตัวเลขเป็นส้มเตือนสายตา — ยังไม่ได้สื่อความหมายด้วยสี
+ * อย่างเดียว เพราะตัวเลขเองก็อ่านออกว่าต่ำอยู่แล้วไม่ว่าจะเห็นสีหรือไม่
  */
 export default function ScoreCell({
   score,
@@ -22,18 +22,14 @@ export default function ScoreCell({
     return <span className="score-none">ยังไม่มีคะแนน</span>
   }
 
-  const filled = Math.round(score)
   const low = score < 3.5
 
   return (
     <span className="score-cell">
-      <span className="pips" role="img" aria-label={`${fmtScore(score)} จาก 5 คะแนน`}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <i key={i} className={i <= filled ? (low ? 'on low' : 'on') : ''} />
-        ))}
+      <span className={`score-value num${low ? ' low' : ''}`}>{fmtScore(score)}</span>
+      <span className="score-count">
+        ประเมินแล้ว <span className="num">{n}</span> ครั้ง
       </span>
-      <span className="score-value num">{fmtScore(score)}</span>
-      <span className="score-count">{n} ครั้ง</span>
     </span>
   )
 }
