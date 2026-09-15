@@ -55,8 +55,15 @@ export default function Combobox({
   // กันไม่ให้การคืนโฟกัสหลังเลือกเสร็จ ไปเปิดรายการขึ้นมาใหม่ทันที
   const justPicked = useRef(false)
 
-  // ตอนปิดอยู่ให้โชว์ค่าที่เลือกจริง ตอนเปิดให้โชว์สิ่งที่กำลังพิมพ์ค้น
-  const shown = open ? query : value
+  // label ของค่าที่เลือกอยู่จริง (ไม่ใช่ value ดิบ) — ที่อื่นในระบบ value กับ label เป็น
+  // สตริงเดียวกันอยู่แล้ว (เช่น รหัสลูกค้า/ประเภทรถที่คนหน้างานจำเป็นรหัสอยู่แล้ว) จึงไม่
+  // เคยเห็นผลต่าง แต่พอเอาไปใช้กับตัวกรองที่ value เป็นโค้ดภายในแต่ label เป็นภาษาไทย
+  // (เช่น 'active' → 'ใช้งาน') ถ้าโชว์ value ดิบจะเห็นโค้ดภาษาอังกฤษโผล่แทนป้ายที่ควรเห็น
+  // หาไม่เจอ (เช่นเพิ่งพิมพ์ค่าใหม่ผ่าน allowCreate) ค่อยถอยไปใช้ value ดิบ
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? value
+
+  // ตอนปิดอยู่ให้โชว์ label ของค่าที่เลือกจริง ตอนเปิดให้โชว์สิ่งที่กำลังพิมพ์ค้น
+  const shown = open ? query : selectedLabel
 
   const filtered = useMemo(() => {
     const q = (open ? query : '').trim().toLowerCase()
@@ -177,7 +184,7 @@ export default function Combobox({
         aria-activedescendant={open && rows > 0 ? `${listId}-${active}` : undefined}
         autoComplete="off"
         disabled={disabled}
-        placeholder={open && !query && value ? value : placeholder}
+        placeholder={open && !query && value ? selectedLabel : placeholder}
         value={shown}
         onChange={(e) => {
           if (!open) setOpen(true)

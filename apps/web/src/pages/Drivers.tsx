@@ -9,7 +9,7 @@ import { JOB_RANGE_OPTIONS } from '../lib/jobRanges'
 import ScoreCell from '../components/ScoreCell'
 import ReadinessPanel from '../components/ReadinessPanel'
 import StatusDialog from '../components/StatusDialog'
-import ClearableSelect from '../components/ClearableSelect'
+import Combobox from '../components/Combobox'
 import { IconSearch, IconUsers } from '../components/icons'
 
 const STATUS_OPTIONS = [
@@ -341,22 +341,22 @@ export default function Drivers() {
           </div>
           <div style={{ flex: '1 1 130px' }}>
             <label htmlFor="st">สถานะ</label>
-            <ClearableSelect
+            <Combobox
               id="st"
               value={status}
               onChange={setStatus}
-              options={STATUS_OPTIONS}
-              clearLabel="ล้างตัวกรองสถานะ"
+              options={STATUS_OPTIONS.filter((o) => o.value !== '')}
+              placeholder="ทั้งหมด"
             />
           </div>
           <div style={{ flex: '1 1 160px' }}>
             <label htmlFor="mj">จำนวนเที่ยววิ่งขั้นต่ำ</label>
-            <ClearableSelect
+            <Combobox
               id="mj"
               value={jobRange}
               onChange={setJobRange}
-              options={JOB_RANGE_OPTIONS}
-              clearLabel="ล้างตัวกรองจำนวนเที่ยว"
+              options={JOB_RANGE_OPTIONS.filter((o) => o.value !== '')}
+              placeholder="ไม่มีกำหนด"
             />
           </div>
         </div>
