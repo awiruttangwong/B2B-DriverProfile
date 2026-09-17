@@ -1,12 +1,22 @@
-import { useState, type FormEvent } from 'react'
+import { useLayoutEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { IconLock, IconMail } from '../components/icons'
+import { applyTheme, readTheme } from '../lib/theme'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'err' | 'ok'; text: string } | null>(null)
+
+  // หน้า login ตรึงเป็นธีมมืดเสมอ ไม่ตามระบบ/ค่าที่เคยเลือกไว้ — แต่พอเข้าระบบแล้ว
+  // ต้องคืนธีมจริงของผู้ใช้กลับมาทันที ไม่งั้นทั้งแอปจะติดมืดค้างไปด้วย
+  // ใช้ useLayoutEffect (ไม่ใช่ useEffect) เพื่อสลับก่อนเบราว์เซอร์วาดเฟรมแรก กัน
+  // จอกระพริบเป็นธีมเดิมแวบหนึ่งก่อนเปลี่ยนเป็นมืด
+  useLayoutEffect(() => {
+    applyTheme('dark')
+    return () => applyTheme(readTheme())
+  }, [])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
