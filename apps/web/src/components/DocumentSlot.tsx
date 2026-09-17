@@ -69,6 +69,13 @@ export default function DocumentSlot({ driverId, docType, label, path }: Props) 
         .upload(key, blob, { contentType: 'image/jpeg', upsert: true })
       if (upErr) throw upErr
 
+      // path เป็นชื่อไฟล์ตายตัว — ถ้ามีแถวอยู่แล้ว ค่าที่จะเขียนจะเหมือนของเดิมเป๊ะ
+      // ("เปลี่ยนรูป" ทับไฟล์เดิม ไม่มีอะไรในฐานข้อมูลต้องเปลี่ยน) เขียนจริงแค่ตอน
+      // อัปโหลดครั้งแรกที่คอลัมน์ยังเป็น null เท่านั้น — ตัดจังหวะเสี่ยงที่ storage
+      // อัปสำเร็จแต่เขียน DB ไม่ทัน (เน็ตหลุดพอดี) ออกไปได้เลยสำหรับกรณีเปลี่ยนรูป
+      // ซึ่งเป็นกรณีที่เกิดบ่อยกว่าอัปโหลดครั้งแรกมาก
+      if (path === key) return
+
       const patch: Partial<{ id_card_path: string; driver_license_path: string }> =
         docType === 'id_card' ? { id_card_path: key } : { driver_license_path: key }
       // .select() หลังเขียนเสมอ — RLS ปฏิเสธไม่ส่ง error กลับมา แค่แก้ได้ 0 แถวแบบเงียบ ๆ
@@ -87,8 +94,10 @@ export default function DocumentSlot({ driverId, docType, label, path }: Props) 
   const remove = useMutation({
     mutationFn: async () => {
       if (!path) return
-      const { error: rmErr } = await supabase.storage.from(BUCKET).remove([path])
-      if (rmErr) throw rmErr
+      // ตัดฐานข้อมูลก่อน ลบไฟล์จริงทีหลัง — ถ้าขั้นตอนหลังล้ม (เน็ตหลุดพอดี) จะเหลือ
+      // ไฟล์ค้างใน storage ที่ไม่มีอะไรอ้างถึงแล้ว (เก็บกวาดทีหลังได้ ไม่กระทบอะไร)
+      // ดีกว่าลำดับกลับกันที่จะเหลือ path ใน DB ชี้ไปยังไฟล์ที่ถูกลบไปแล้ว ทำให้
+      // เห็นเป็นรูปเสีย/โหลดไม่ขึ้นตอนเปิดหน้าครั้งถัดไป
       const { data, error } = await supabase
         .from('driver_private')
         .update({ [column]: null })
@@ -96,6 +105,9 @@ export default function DocumentSlot({ driverId, docType, label, path }: Props) 
         .select('driver_id')
       if (error) throw error
       if (!data?.length) throw new Error('row-level security')
+
+      const { error: rmErr } = await supabase.storage.from(BUCKET).remove([path])
+      if (rmErr) throw rmErr
     },
     onSuccess: () => {
       setConfirmDelete(false)
