@@ -31,7 +31,7 @@ export default function Login() {
             </span>
           </div>
           <p className="muted" style={{ margin: '12px 0 0', fontSize: 14 }}>
-            ระบบโปรไฟล์ ประวัติงาน และคะแนนพนักงานขับรถ
+            ระบบโปรไฟล์ ประวัติงาน และประเมินพนักงานขับรถ
           </p>
         </div>
 
