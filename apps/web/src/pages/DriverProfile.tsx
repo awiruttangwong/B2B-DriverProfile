@@ -7,6 +7,7 @@ import type {
   CustomerPerfRow,
   DriverContact,
   DriverDirectoryRow,
+  DriverPhone,
   DriverPrivateDoc,
   DriverStatus,
   DriverStatusLogRow,
@@ -30,6 +31,7 @@ import { IconArrowLeft, IconEdit, IconPhone } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 import ContactDialog from '../components/ContactDialog'
 import DocumentSlot from '../components/DocumentSlot'
+import ExtraPhones from '../components/ExtraPhones'
 
 /** จำนวนรายการโทรที่แสดงก่อนกด "ดูทั้งหมด" — ส่วนใหญ่คนถัดไปสนใจแค่ไม่กี่ครั้งล่าสุด */
 const CONTACTS_PREVIEW = 5
@@ -82,6 +84,21 @@ export default function DriverProfile() {
         .maybeSingle()
       if (error) throw error
       return data as DriverDirectoryRow | null
+    },
+    enabled: !!id,
+  })
+
+  // เบอร์สำรอง (ที่ 2/3) — เปิดอ่านให้ทุกคนเหมือนเบอร์หลัก ไม่จำกัดสิทธิ์
+  const phones = useQuery({
+    queryKey: ['driver', id, 'phones'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('driver_phones')
+        .select('*')
+        .eq('driver_id', id)
+        .order('position')
+      if (error) throw error
+      return (data ?? []) as DriverPhone[]
     },
     enabled: !!id,
   })
@@ -265,6 +282,7 @@ export default function DriverProfile() {
                 fmtPhone(d.phone)
               )}
             </div>
+            <ExtraPhones driverId={d.id} primaryPhone={d.phone} phones={phones.data ?? []} />
             <div className="row" style={{ gap: 6, marginTop: 8 }}>
               <span
                 className={`badge ${
@@ -492,7 +510,7 @@ export default function DriverProfile() {
           {/* ------------------------------------------ รีวิวพร้อมเหตุผล */}
           <div className="card">
             <div className="card-head">
-              <h2>เหตุผลที่ได้คะแนนแบบนี้</h2>
+              <h2>ประวัติการประเมิน</h2>
             </div>
             {(reviews.data?.length ?? 0) === 0 ? (
               <div className="empty">
@@ -511,13 +529,18 @@ export default function DriverProfile() {
                     className="card-pad"
                     style={{ borderBottom: '1px solid var(--line)' }}
                   >
-                    <div className="row" style={{ gap: 10, marginBottom: 4 }}>
-                      <span className="num" style={{ fontWeight: 600, color: 'var(--accent)' }}>
-                        {fmtScore(r.overall_score)}
-                      </span>
-                      <span className="mono muted" style={{ fontSize: 12 }}>
-                        {fmtDate(r.created_at)}
-                        {r.rater?.full_name ? ` · ${r.rater.full_name}` : ''}
+                    <div className="row" style={{ gap: 10, marginBottom: 4, alignItems: 'center' }}>
+                      <span className="review-score num">{fmtScore(r.overall_score)}</span>
+                      <span style={{ fontSize: 12.5 }}>
+                        <span className="muted mono">{fmtDate(r.created_at)}</span>
+                        {r.rater?.full_name && (
+                          <>
+                            <span className="muted"> · ประเมินโดย </span>
+                            <span style={{ fontWeight: 500, color: 'var(--ink)' }}>
+                              {r.rater.full_name}
+                            </span>
+                          </>
+                        )}
                       </span>
                       {r.assign_again !== null && (
                         <span className={`badge ${r.assign_again ? 'ok' : 'bad'}`}>
@@ -582,12 +605,6 @@ export default function DriverProfile() {
               </table>
             </div>
           )}
-          <div className="card-pad">
-            <p className="hint" style={{ margin: 0 }}>
-              ตารางนี้คือคำตอบของ “คนไหนเหมาะกับงานไหน” — จำนวนเที่ยวบอกความคุ้นเคยกับลูกค้ารายนี้
-              ส่วนคะแนนคุณภาพเป็นการประเมินภาพรวมทั้งคน ดูได้ที่ด้านบนของหน้า
-            </p>
-          </div>
         </div>
 
         {/* -------------------------------------------- ประวัติการติดต่อ */}
@@ -616,7 +633,7 @@ export default function DriverProfile() {
             <div className="empty">
               <b>ยังไม่มีบันทึกการโทร</b>
               {can('admin', 'hr', 'ops')
-                ? 'โทรหาคนขับแล้วกด “บันทึกการโทร” เพื่อให้คนอื่นในทีมรู้ว่าติดต่อไปแล้ว'
+                ? 'โทรหาพนักงานขับรถแล้วกด “บันทึกการโทร” เพื่อให้คนอื่นในทีมรู้ว่าติดต่อไปแล้ว'
                 : 'ยังไม่มีใครบันทึกการติดต่อ พขร. คนนี้'}
             </div>
           ) : (

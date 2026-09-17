@@ -619,6 +619,46 @@ input[type='password'] {
   text-decoration: none;
 }
 
+/* เบอร์สำรอง (ที่ 2/3) — วางใต้เบอร์หลัก บรรทัดเล็ก ไม่กินพื้นที่ */
+.extra-phones {
+  margin-top: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.extra-phones-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.extra-phones-row .phone-link {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+/* ซ่อนปุ่มลบจนกว่าจะชี้เมาส์ เฉพาะอุปกรณ์ที่ชี้ได้จริง — มือถือไม่มี hover
+   ถ้าซ่อนทุกเครื่อง ปุ่มจะมองไม่เห็นตลอดแต่ยังกดโดนได้บนจอสัมผัส */
+@media (hover: hover) {
+  .extra-phones-remove {
+    opacity: 0;
+  }
+  .extra-phones-row:hover .extra-phones-remove,
+  .extra-phones-row:focus-within .extra-phones-remove {
+    opacity: 1;
+  }
+}
+.extra-phones-confirm,
+.extra-phones-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.extra-phones-input {
+  width: 118px !important;
+  padding: 3px 8px !important;
+  font-size: 12px !important;
+}
+
 .contact-list {
   list-style: none;
   margin: 0;
@@ -1454,6 +1494,22 @@ th[aria-sort] .arrow {
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
+}
+
+/* คะแนนของใบประเมินแต่ละใบ ใน "ประวัติการประเมิน" — เดิมใช้ var(--accent) ที่ไม่มี
+   ตัวแปรนี้จริงในระบบ (ไม่มีผลอะไรเลย ตัวเลขเลยออกมาสีดำเฉย ๆ) เปลี่ยนเป็น chip
+   ทรงเดียวกับ .score-cell ที่ใช้ทั่วระบบแล้ว ให้เข้าชุดกัน */
+.review-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  font-weight: 700;
+  font-size: 13.5px;
 }
 
 .bar {

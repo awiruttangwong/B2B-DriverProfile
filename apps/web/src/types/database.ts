@@ -59,6 +59,14 @@ export interface Driver {
   updated_at: string
 }
 
+/** driver_phones — เบอร์สำรอง (ตำแหน่ง 2/3 เท่านั้น เบอร์หลักคือ drivers.phone) */
+export interface DriverPhone {
+  id: string
+  driver_id: string
+  phone: string
+  position: 2 | 3
+}
+
 /** driver_private — ข้อมูลอ่อนไหว เปิดอ่าน/เขียนได้เฉพาะ admin/hr (RLS can_see_pii()) */
 export interface DriverPrivateDoc {
   driver_id: string
