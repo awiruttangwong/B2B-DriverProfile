@@ -59,6 +59,13 @@ export interface Driver {
   updated_at: string
 }
 
+/** driver_private — ข้อมูลอ่อนไหว เปิดอ่าน/เขียนได้เฉพาะ admin/hr (RLS can_see_pii()) */
+export interface DriverPrivateDoc {
+  driver_id: string
+  id_card_path: string | null
+  driver_license_path: string | null
+}
+
 /** view: driver_directory — รายชื่อพร้อมสรุป ใช้ในหน้ารายการและหน้าโปรไฟล์ */
 export interface DriverDirectoryRow {
   id: string

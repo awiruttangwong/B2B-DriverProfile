@@ -1622,6 +1622,138 @@ th[aria-sort] .arrow {
   margin-bottom: 4px;
 }
 
+/* ------------------------------------------- เอกสารแนบ (บัตร ปชช. / ใบขับขี่)
+   วางต่อจากชื่อในหัวโปรไฟล์ ไม่แตะโครงเดิม — margin-right:auto ดันคะแนนไปขวาสุดเหมือนเดิม
+   ความสูงกล่องเท่ากับบล็อกชื่อ/สถานะ หัวการ์ดจึงไม่สูงขึ้น */
+.doc-slots {
+  display: flex;
+  gap: 24px;
+  margin-left: 64px;
+  margin-right: auto;
+}
+.doc-slot-wrap {
+  width: 232px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.doc-slot {
+  position: relative;
+  width: 100%;
+  height: 96px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.doc-slot.dropzone {
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+.doc-slot .dropzone-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.doc-slot.dropzone b {
+  font-size: 13px;
+  margin: 0 0 2px;
+}
+.doc-slot-hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.doc-slot-filled {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px 0 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+.doc-slot-thumb {
+  flex-shrink: 0;
+  width: 94px;
+  aspect-ratio: 1.586;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  cursor: zoom-in;
+}
+.doc-slot-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.doc-slot-info {
+  min-width: 0;
+  white-space: nowrap;
+}
+.doc-slot-info b {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.doc-slot-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.doc-slot-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--brand-strong);
+  cursor: pointer;
+}
+.doc-slot-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.doc-slot-link.danger {
+  color: var(--bad);
+}
+.doc-slot-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.doc-slot-err {
+  font-size: 11px;
+  color: var(--bad);
+}
+@media (max-width: 640px) {
+  .doc-slots {
+    flex-basis: 100%;
+    order: 3;
+    margin: 4px 0 0;
+  }
+}
+
+/* ครอปรูปก่อนอัปโหลด — พื้นที่ในกรอบคือพื้นที่ที่จะถูกครอปเป๊ะ */
+.crop-canvas {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  cursor: grab;
+  touch-action: none;
+  max-width: 100%;
+}
+.crop-canvas:active {
+  cursor: grabbing;
+}
+
 /* โครงร่างระหว่างโหลด ดีกว่าวงกลมหมุนเพราะบอกรูปร่างของสิ่งที่กำลังมา */
 .sk {
   background: linear-gradient(

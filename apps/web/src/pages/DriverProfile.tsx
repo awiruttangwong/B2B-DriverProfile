@@ -7,6 +7,7 @@ import type {
   CustomerPerfRow,
   DriverContact,
   DriverDirectoryRow,
+  DriverPrivateDoc,
   DriverStatus,
   DriverStatusLogRow,
   DriverReviewRow,
@@ -28,6 +29,7 @@ import {
 import { IconArrowLeft, IconEdit, IconPhone } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 import ContactDialog from '../components/ContactDialog'
+import DocumentSlot from '../components/DocumentSlot'
 
 /** จำนวนรายการโทรที่แสดงก่อนกด "ดูทั้งหมด" — ส่วนใหญ่คนถัดไปสนใจแค่ไม่กี่ครั้งล่าสุด */
 const CONTACTS_PREVIEW = 5
@@ -82,6 +84,22 @@ export default function DriverProfile() {
       return data as DriverDirectoryRow | null
     },
     enabled: !!id,
+  })
+
+  // เอกสารแนบ (บัตร ปชช./ใบขับขี่) — ข้อมูลอ่อนไหว ไม่ยิง query เลยถ้าไม่มีสิทธิ์
+  const canSeeDocs = can('admin', 'hr')
+  const docs = useQuery({
+    queryKey: ['driver', id, 'private'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('driver_private')
+        .select('id_card_path, driver_license_path')
+        .eq('driver_id', id)
+        .maybeSingle()
+      if (error) throw error
+      return data as DriverPrivateDoc | null
+    },
+    enabled: !!id && canSeeDocs,
   })
 
   const history = useQuery({
@@ -279,6 +297,23 @@ export default function DriverProfile() {
               </div>
             )}
           </div>
+
+          {canSeeDocs && (
+            <div className="doc-slots">
+              <DocumentSlot
+                driverId={d.id}
+                docType="id_card"
+                label="บัตรประชาชน"
+                path={docs.data?.id_card_path ?? null}
+              />
+              <DocumentSlot
+                driverId={d.id}
+                docType="driver_license"
+                label="ใบขับขี่"
+                path={docs.data?.driver_license_path ?? null}
+              />
+            </div>
+          )}
 
           <div style={{ textAlign: 'right' }}>
             {d.rating_count && d.rating_count > 0 ? (

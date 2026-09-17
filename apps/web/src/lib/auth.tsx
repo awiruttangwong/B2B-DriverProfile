@@ -10,12 +10,22 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import type { AppRole, Profile } from '../types/database'
 
+// ต้องตรงกับ allowlist ใน supabase/migrations/0021_activity_log_allowlist.sql เป๊ะ
+// (ฝั่งนี้แค่ซ่อนเมนู ตัวบังคับจริงอยู่ที่ view ชั้นเดียวกันกับที่นั่น)
+const ACTIVITY_LOG_EMAILS = [
+  'kritpat.t@2klogistics.co.th',
+  'awirut.tan@2klogistics.co.th',
+  'datacenter@2klogistics.co.th',
+]
+
 interface AuthState {
   session: Session | null
   profile: Profile | null
   loading: boolean
   /** สิทธิ์จริงบังคับที่ฐานข้อมูลด้วย RLS — ค่านี้ใช้แค่ซ่อนปุ่มที่กดไปก็ไม่ผ่านอยู่ดี */
   can: (...roles: AppRole[]) => boolean
+  /** บันทึกกิจกรรมจำกัดเฉพาะ 3 อีเมล ไม่ผูกกับ role — แยกจาก can() เพราะเช็คคนละแบบ */
+  canSeeActivityLog: boolean
   signOut: () => Promise<void>
 }
 
@@ -90,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       can: (...roles) => (profile ? roles.includes(profile.role) : false),
+      canSeeActivityLog: !!profile?.email && ACTIVITY_LOG_EMAILS.includes(profile.email.toLowerCase()),
       signOut: async () => {
         await supabase.auth.signOut()
       },

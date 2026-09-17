@@ -82,7 +82,7 @@ function usePendingCount() {
 }
 
 function NavLinks() {
-  const { can } = useAuth()
+  const { canSeeActivityLog } = useAuth()
   const pending = usePendingCount()
   return (
     <nav className="nav" aria-label="เมนูหลัก">
@@ -101,7 +101,7 @@ function NavLinks() {
       <Tab to="/upload" icon={<IconUpload />}>
         อัปโหลดไฟล์
       </Tab>
-      {can('admin') && (
+      {canSeeActivityLog && (
         <Tab to="/activity-log" icon={<IconClock />}>
           บันทึกกิจกรรม
         </Tab>
@@ -134,7 +134,7 @@ function BootScreen() {
 }
 
 function Shell() {
-  const { session, profile, loading, can, signOut } = useAuth()
+  const { session, profile, loading, canSeeActivityLog, signOut } = useAuth()
 
   if (loading && !session) return <BootScreen />
 
@@ -242,7 +242,7 @@ function Shell() {
                   <div className="empty" style={{ paddingTop: 120 }}>
                     <span className="spinner" /> กำลังโหลด…
                   </div>
-                ) : can('admin') ? (
+                ) : canSeeActivityLog ? (
                   <ActivityLog />
                 ) : (
                   <Navigate to="/drivers" replace />
