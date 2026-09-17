@@ -198,6 +198,10 @@ export default function DriverProfile() {
   }, [criteria.data])
 
   const lastReviewAt = reviews.data?.[0]?.created_at ?? null
+  // เหตุผลของใบล่าสุดเท่านั้น — ไม่ใช่ของทุกใบ เพราะแถบคะแนนด้านล่างเป็นค่าเฉลี่ยรวม
+  // ทุกใบ เอาเหตุผลใบเดียวไปแปะต่อท้ายค่าเฉลี่ยจะเข้าใจผิดว่าอธิบายค่าเฉลี่ยทั้งหมด
+  const latestReason = reviews.data?.[0]?.reason?.trim() || null
+  const latestReviewerName = reviews.data?.[0]?.rater?.full_name || null
 
   if (driver.isLoading) {
     return (
@@ -292,6 +296,27 @@ export default function DriverProfile() {
                     </>
                   )}
                 </div>
+                {latestReason && (
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                      marginLeft: 'auto',
+                      maxWidth: 320,
+                      fontSize: 12.5,
+                      fontStyle: 'italic',
+                      color: 'var(--ink-2)',
+                      textAlign: 'right',
+                    }}
+                  >
+                    &ldquo;{latestReason}&rdquo;
+                    {latestReviewerName && (
+                      <span className="muted" style={{ fontStyle: 'normal', fontSize: 11 }}>
+                        {' '}
+                        — {latestReviewerName}
+                      </span>
+                    )}
+                  </p>
+                )}
               </>
             ) : (
               <div style={{ textAlign: 'right' }}>
