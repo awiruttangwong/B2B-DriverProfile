@@ -159,7 +159,7 @@ export default function PendingRatings() {
                     {d.full_name}
                   </Link>{' '}
                   <span className="mono muted" style={{ fontSize: 11 }}>
-                    {d.driver_code} · {fmtPhone(d.phone)}
+                    {fmtPhone(d.phone)}
                   </span>
                 </div>
                 <div className="row" style={{ gap: 10 }}>
@@ -251,9 +251,6 @@ export default function PendingRatings() {
               <tr key={r.id}>
                 <td>
                   <Link to={`/drivers/${r.id}`}>{r.full_name}</Link>
-                  <div className="mono muted" style={{ fontSize: 11 }}>
-                    {r.driver_code}
-                  </div>
                 </td>
                 <td className="mono nowrap">{fmtPhone(r.phone)}</td>
                 <td className="num" style={{ textAlign: 'center' }}>

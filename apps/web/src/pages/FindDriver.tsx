@@ -398,9 +398,6 @@ export default function FindDriver() {
                       <Link to={`/drivers/${r.driver_id}`} style={{ fontWeight: 500 }}>
                         {r.full_name}
                       </Link>
-                      <div className="mono muted" style={{ fontSize: 11 }}>
-                        {r.driver_code}
-                      </div>
                     </td>
                     <td className="mono nowrap">{fmtPhone(r.phone)}</td>
                     <td className="num">{fmtNum(r.total_jobs)}</td>

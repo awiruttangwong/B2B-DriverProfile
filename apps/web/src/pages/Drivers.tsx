@@ -86,7 +86,7 @@ function DriverSearchField({
         // (ใช้ในหน้า "หา พขร. เพื่อเข้ารับงาน") ใช้ type="text" อยู่แล้วจึงไม่เจอปัญหานี้
         type="text"
         autoComplete="off"
-        placeholder="ชื่อ พขร. / เบอร์โทร / DRV-00123"
+        placeholder="ชื่อ พขร. / เบอร์โทร"
         value={value}
         onChange={(e) => {
           onChange(e.target.value)
@@ -139,12 +139,7 @@ function DriverSearchField({
                 navigate(`/drivers/${s.id}`)
               }}
             >
-              <span className="combo-label">
-                {s.full_name}
-                <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>
-                  {s.driver_code}
-                </span>
-              </span>
+              <span className="combo-label">{s.full_name}</span>
               <span className="combo-hint">{fmtPhone(s.phone)}</span>
             </li>
           ))}
@@ -439,9 +434,6 @@ export default function Drivers() {
                     <Link to={`/drivers/${d.id}`} style={{ fontWeight: 500 }}>
                       {d.full_name}
                     </Link>
-                    <div className="mono muted" style={{ fontSize: 11.5 }}>
-                      {d.driver_code}
-                    </div>
                   </td>
                   <td className="mono nowrap">{fmtPhone(d.phone)}</td>
                   <td className="num">{fmtNum(d.total_jobs)}</td>

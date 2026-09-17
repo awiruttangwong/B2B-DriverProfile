@@ -330,9 +330,7 @@ export default function NewJob() {
                     {(existing.data ?? []).map((d) => (
                       <li key={d.id} style={{ fontSize: 13.5 }}>
                         <Link to={`/drivers/${d.id}`}>{d.full_name}</Link>{' '}
-                        <span className="muted">
-                          · {d.driver_code} · {fmtNum(d.total_jobs)} เที่ยว
-                        </span>
+                        <span className="muted">· {fmtNum(d.total_jobs)} เที่ยว</span>
                       </li>
                     ))}
                   </ul>

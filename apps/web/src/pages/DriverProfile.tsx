@@ -235,7 +235,6 @@ export default function DriverProfile() {
           <div>
             <h1 style={{ fontSize: 22 }}>{d.full_name}</h1>
             <div className="mono muted" style={{ fontSize: 12.5 }}>
-              {d.driver_code} ·{' '}
               {d.phone ? (
                 <a href={`tel:${d.phone}`} className="phone-link" title="กดเพื่อโทรออก">
                   {fmtPhone(d.phone)}
