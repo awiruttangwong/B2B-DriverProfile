@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Customer, DriverFitRow, VehicleType } from '../types/database'
-import { fmtDateShort, fmtNum, fmtPhone, fmtScore } from '../lib/format'
+import { fmtDateShort, fmtNum, fmtPhone } from '../lib/format'
 import Combobox, { type ComboOption } from '../components/Combobox'
+import ScoreCell from '../components/ScoreCell'
 import { IconTarget } from '../components/icons'
 
 interface RouteSuggestion {
@@ -369,7 +370,7 @@ export default function FindDriver() {
                       <ColHead label="จำนวนเที่ยวที่วิ่งเส้นทาง" context={submitted.route.trim()} />
                     </th>
                   )}
-                  <th>คะแนนประเมิน</th>
+                  <th className="col-score">คะแนนประเมิน</th>
                   <th>งานล่าสุด</th>
                 </tr>
               </thead>
@@ -406,20 +407,8 @@ export default function FindDriver() {
                       <td className="num">{fmtNum(r.vehicle_type_jobs)}</td>
                     )}
                     {submitted?.route.trim() && <td className="num">{fmtNum(r.route_jobs)}</td>}
-                    <td className="num">
-                      {r.rating_count > 0 ? (
-                        <>
-                          {fmtScore(r.adjusted_score)}
-                          <span className="muted" style={{ fontSize: 11 }}>
-                            {' '}
-                            ({r.rating_count})
-                          </span>
-                        </>
-                      ) : (
-                        <span className="muted nowrap" style={{ fontSize: 12 }}>
-                          ยังไม่ประเมิน
-                        </span>
-                      )}
+                    <td className="col-score">
+                      <ScoreCell score={r.adjusted_score} count={r.rating_count} />
                     </td>
                     <td className="nowrap mono" style={{ fontSize: 11.5 }}>
                       {fmtDateShort(r.last_job_date)}
