@@ -23,11 +23,15 @@ import Upload from './pages/Upload'
 import NewJob from './pages/NewJob'
 import ActivityLog from './pages/ActivityLog'
 
-/** อักษรย่อสำหรับ avatar กลม — เอาตัวแรกของคำแรกกับคำที่สอง ถ้ามีคำเดียวก็ตัด 2 ตัวแรก */
+/**
+ * อักษรย่อสำหรับ avatar กลม — เอาตัวแรกของคำแรกกับคำที่สอง ถ้ามีคำเดียวก็ตัด 2 ตัวแรก
+ * ยกเว้นคำเดียวที่สั้นอยู่แล้ว (ไม่เกิน 3 ตัว เช่น "CEO") แสดงเต็ม ไม่งั้นตัดเหลือ "CE"
+ * ซึ่งไม่ใช่ตำแหน่งที่ตั้งใจ
+ */
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  if (parts.length === 1) return parts[0]!.slice(0, parts[0]!.length <= 3 ? 3 : 2).toUpperCase()
   return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
 }
 
