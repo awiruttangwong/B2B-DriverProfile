@@ -184,6 +184,8 @@ export interface DriverFitRow {
   customer_jobs: number
   vehicle_type_jobs: number
   route_jobs: number
+  /** ประเภทรถของเที่ยวที่เกี่ยวข้องกับที่ค้น เรียงมาก→น้อย ([] เมื่อระบุประเภทรถแล้ว) — 0027 */
+  vehicle_types?: { code: string; jobs: number }[]
   adjusted_score: number | null
   rating_count: number
   last_job_date: string | null

@@ -1277,15 +1277,18 @@ td.nowrap,
   white-space: nowrap;
 }
 
-/* ตารางอันดับ (หน้าหา พขร. เพื่อเข้ารับงาน) — จัดกึ่งกลางทุกคอลัมน์เหมือนหน้ารายชื่อ
-   พขร. ยกเว้นคอลัมน์ชื่อคนที่ชิดซ้ายเพราะเป็นคอลัมน์ระบุตัวตน ไม่ใช่ค่าตัวเลข */
+/* ตารางอันดับ (หน้าหา พขร. เพื่อเข้ารับงาน) — จัดกึ่งกลางทุกคอลัมน์ ทั้งหัวและเนื้อหา
+   (รวมคอลัมน์ชื่อ พขร. และคะแนน ที่เดิมชิดซ้าย) */
 .fit-table th,
 .fit-table td {
   text-align: center;
 }
-.fit-table th:nth-child(2),
-.fit-table td:nth-child(2) {
-  text-align: left;
+/* เส้นแบ่งคอลัมน์ — ไล่ตั้งแต่หัวตารางลงมาถึงแถวสุดท้าย สีเดียวกับเส้นคั่นแถว (--line)
+   จึงเป็นตารางตารางเดียวกัน ไม่ใช่เส้นสองชุดที่สีต่างกัน คอลัมน์แรกไม่ต้องมีเส้นซ้าย
+   (ขอบการ์ดทำหน้าที่นั้นอยู่แล้ว) */
+.fit-table th + th,
+.fit-table td + td {
+  border-left: 1px solid var(--line);
 }
 /* ห้ามหัวคอลัมน์ตัดคำกลางคำ — ภาษาไทยไม่มีช่องว่างระหว่างคำ เบราว์เซอร์จึงตัดตรงไหน
    ก็ได้ถ้าปล่อยไว้ ("ความ" กลายเป็น "ค" ขึ้นบรรทัดใหม่เป็น "วาม") */
@@ -1298,13 +1301,16 @@ td.nowrap,
 .col-head-sub {
   display: block;
   max-width: 22ch;
-  margin: 1px auto 0;
+  margin: 3px auto 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 400;
-  font-size: 11px;
-  color: var(--muted);
+  /* หน้าตาเหมือนชื่อหัวทุกอย่าง (ขนาด น้ำหนัก สี) — หัวตารางแปลงอังกฤษเป็นตัวพิมพ์ใหญ่
+     + เว้นระยะตัวอักษรอยู่ ซึ่งทำให้ชื่อลูกค้าอังกฤษดูใหญ่กว่าบรรทัดภาษาไทยที่อยู่ข้างกัน
+     จึงปิดการแปลงเฉพาะบรรทัดนี้ */
+  font: inherit;
+  color: inherit;
+  text-transform: none;
 }
 
 /* ตารางในการ์ดแคบ เช่นคอลัมน์ขวาของหน้าโปรไฟล์ (กว้างจริงราว 415px)
@@ -1461,12 +1467,67 @@ th[aria-sort] .arrow {
    100% มากินไป (ไม่งั้นคอลัมน์ถัดไปจะถูกดันไปไกลจนเห็นช่องว่างเปล่า ๆ ตรงกลาง)
    พื้นที่ส่วนเกินไปตกกับคอลัมน์ชื่อ พขร. แทนซึ่งเป็นข้อความยาวไม่จำกัดอยู่แล้ว */
 .drivers-table th.col-score,
-.drivers-table td.col-score,
-.fit-table th.col-score,
-.fit-table td.col-score {
+.drivers-table td.col-score {
   text-align: left;
   width: 1%;
   white-space: nowrap;
+}
+/* ตารางหา พขร. เพื่อเข้ารับงาน: คอลัมน์คะแนนกึ่งกลางเหมือนคอลัมน์อื่น (ไม่ชิดซ้ายแบบข้างบน)
+   แต่ยังหดพอดีเนื้อหา ไม่ดึงพื้นที่ว่างส่วนเกินไปจากคอลัมน์อื่น */
+.fit-table th.col-score,
+.fit-table td.col-score {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* คอลัมน์ประเภทรถที่เคยวิ่ง (หน้าหา พขร. เมื่อไม่ได้เลือกประเภทรถ) — กึ่งกลางเหมือนคอลัมน์
+   อื่นในตารางนี้ (หัวกับเนื้อหาอยู่แนวเดียวกัน) ไม่ตัดขึ้นบรรทัดใหม่ ความสูงแถวจึงเท่ากันทุกแถว
+   padding ซ้ายขวาเผื่อไว้ไม่ให้ป้ายชิดคอลัมน์ข้าง ๆ */
+.fit-table th.col-vt,
+.fit-table td.col-vt {
+  white-space: nowrap;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.vt-chips {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+/* ป้าย "รหัส | จำนวนเที่ยว" — สองช่องคั่นด้วยเส้นบาง รหัสเข้ม จำนวนเที่ยวจางกว่า
+   อ่านเป็นคู่ค่าได้ทันทีโดยไม่ต้องตีความเครื่องหมาย × */
+.vt-chip {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: default;
+}
+.vt-chip-code {
+  padding: 1px 8px 1px 10px;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.vt-chip-n {
+  padding: 1px 10px 1px 8px;
+  border-left: 1px solid var(--line-strong);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.vt-chip-more {
+  padding: 1px 9px;
+  border-style: dashed;
+  background: transparent;
+  font-weight: 400;
+  color: var(--muted);
 }
 
 /* แถวคะแนน — ชิดซ้ายเสมอ ไม่พึ่ง .row เพราะ .drivers-table td .row บังคับกึ่งกลางไว้

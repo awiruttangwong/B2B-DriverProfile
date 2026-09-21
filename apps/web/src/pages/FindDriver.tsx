@@ -334,6 +334,16 @@ export default function FindDriver() {
   // จำนวนคนที่ผ่านตัวกรองทั้งหมด ไม่ใช่แค่จำนวนแถวที่ส่งมาในหน้านี้ (หลัง limit)
   const totalCount = results.data?.[0]?.total_count ?? 0
 
+  // ไม่ได้เลือกประเภทรถ = ผลรวมทุกประเภทไว้ด้วยกัน จึงแสดงต่อท้ายแถวว่าแต่ละคนวิ่งรถอะไร
+  // (ระบุประเภทรถแล้วมีคอลัมน์จำนวนเที่ยวของประเภทนั้นอยู่แล้ว) ซ่อนเองถ้าฐานข้อมูลยังไม่ได้
+  // รัน migration 0027 (ไม่มีฟิลด์ส่งมา) แทนที่จะโชว์คอลัมน์ว่างทั้งตาราง
+  const showVehicleTypes =
+    !submitted?.vehicleType && !!results.data?.some((r) => Array.isArray(r.vehicle_types))
+  const vehicleTypeNames = useMemo(
+    () => new Map((vehicleTypes.data ?? []).map((v) => [v.code, v.name])),
+    [vehicleTypes.data],
+  )
+
   return (
     <main className="page">
       <div className="page-head">
@@ -507,6 +517,19 @@ export default function FindDriver() {
                       <ColHead label="จำนวนเที่ยวที่วิ่งเส้นทาง" context={submitted.route.trim()} />
                     </th>
                   )}
+                  {showVehicleTypes && (
+                    <th className="col-vt">
+                      {/* หัวบอกชัดว่าป้ายนับจากอะไร — ตรงกับที่ฐานข้อมูลนับ (0027): มีลูกค้านับตาม
+                          ลูกค้า ไม่มีลูกค้าแต่มีเส้นทางนับตามเส้นทาง ไม่มีทั้งคู่นับทุกเที่ยว */}
+                      {submitted?.customer ? (
+                        <ColHead label="ประเภทรถที่เคยวิ่งให้กับลูกค้า" context={submitted.customer} />
+                      ) : submitted?.route.trim() ? (
+                        <ColHead label="ประเภทรถที่เคยวิ่งเส้นทาง" context={submitted.route.trim()} />
+                      ) : (
+                        <ColHead label="ประเภทรถที่เคยวิ่ง" context="ทุกเที่ยว" />
+                      )}
+                    </th>
+                  )}
                   <th className="col-score">คะแนนประเมิน</th>
                   <th>งานล่าสุด</th>
                 </tr>
@@ -521,7 +544,8 @@ export default function FindDriver() {
                         6 +
                         Number(!!submitted?.customer) +
                         Number(!!submitted?.vehicleType) +
-                        Number(!!submitted?.route.trim())
+                        Number(!!submitted?.route.trim()) +
+                        Number(showVehicleTypes)
                       }
                       className="empty"
                     >
@@ -545,6 +569,11 @@ export default function FindDriver() {
                       <td className="num">{fmtNum(r.vehicle_type_jobs)}</td>
                     )}
                     {submitted?.route.trim() && <td className="num">{fmtNum(r.route_jobs)}</td>}
+                    {showVehicleTypes && (
+                      <td className="col-vt">
+                        <VehicleTypeChips types={r.vehicle_types ?? []} names={vehicleTypeNames} />
+                      </td>
+                    )}
                     <td className="col-score">
                       <ScoreCell score={r.adjusted_score} count={r.rating_count} />
                     </td>
@@ -574,6 +603,44 @@ export default function FindDriver() {
         </>
       )}
     </main>
+  )
+}
+
+const VT_CHIPS_SHOWN = 3
+
+/**
+ * ป้ายประเภทรถของ พขร. หนึ่งคน (เรียงเที่ยวมาก→น้อยมาจากฐานข้อมูลแล้ว) — โชว์ 3 ประเภทแรก
+ * ที่เหลือรวมเป็น "+N" ชี้เมาส์ดูครบได้ คงความสูงแถวให้เท่ากันทุกแถว
+ * ไม่มีข้อมูล (ไม่เคยวิ่งเที่ยวที่ตรงเงื่อนไข) แสดง "—" ไม่ปล่อยช่องว่างเปล่า
+ */
+function VehicleTypeChips({
+  types,
+  names,
+}: {
+  types: { code: string; jobs: number }[]
+  names: Map<string, string | null>
+}) {
+  if (types.length === 0) return <span className="muted">—</span>
+  const label = (t: { code: string; jobs: number }) => {
+    const name = names.get(t.code)
+    return `${t.code}${name && name !== t.code ? ` (${name})` : ''} · ${fmtNum(t.jobs)} เที่ยว`
+  }
+  const shown = types.slice(0, VT_CHIPS_SHOWN)
+  const rest = types.slice(VT_CHIPS_SHOWN)
+  return (
+    <span className="vt-chips">
+      {shown.map((t) => (
+        <span key={t.code} className="vt-chip" title={label(t)}>
+          <span className="vt-chip-code">{t.code}</span>
+          <span className="vt-chip-n">{fmtNum(t.jobs)}</span>
+        </span>
+      ))}
+      {rest.length > 0 && (
+        <span className="vt-chip vt-chip-more" title={rest.map(label).join('\n')}>
+          +{rest.length}
+        </span>
+      )}
+    </span>
   )
 }
 
