@@ -36,6 +36,23 @@ export function normCode(v: unknown): string | null {
   return s ? s.toUpperCase() : null
 }
 
+/**
+ * รหัสลูกค้าที่ข้อมูลต้นทางสะกดผิด → รหัสที่ถูกต้อง (คีย์ต้องเป็นตัวพิมพ์ใหญ่ ตามที่ normCode ให้)
+ * ข้อมูลที่นำเข้าไว้แล้วถูกย้ายไปรหัสที่ถูกต้องในฐานข้อมูลแล้วด้วย migration 0026
+ *
+ * ใช้ตอน "หา/สร้างลูกค้า" เท่านั้น ห้ามใช้กับค่าที่เอาไปคิด row_hash: hash ต้องมาจากสิ่งที่
+ * เขียนอยู่ในไฟล์จริง เพราะแถวที่นำเข้าไว้แล้วถูกคิด hash จากรหัสสะกดผิดนี้ ถ้าแปลงก่อนคิด
+ * hash การอัปโหลดไฟล์เดิมซ้ำจะได้ hash ใหม่ แล้วสร้างเที่ยวซ้ำทั้งไฟล์ (สูตร hash ต้องตรงกับ
+ * etl_excel.py ด้วย)
+ */
+const CUSTOMER_ALIASES: Record<string, string> = {
+  SANDAN: 'SANDEN',
+}
+
+export function canonCustomer(code: string | null): string | null {
+  return code ? (CUSTOMER_ALIASES[code] ?? code) : code
+}
+
 export function normPlate(v: unknown): string | null {
   const s = normText(v)
   if (!s) return null

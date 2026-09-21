@@ -9,7 +9,7 @@
  */
 
 import { supabase } from './supabase'
-import { detUuid, isSamePerson } from './normalize'
+import { canonCustomer, detUuid, isSamePerson } from './normalize'
 import type { CleanRow, InvalidRow } from './cleaning'
 
 export type {
@@ -113,7 +113,11 @@ export async function ingestRows(
   // ------------------------------------------------------------ ตารางอ้างอิง
   say(5, 'เตรียมลูกค้าและประเภทรถ')
 
-  const customerCodes = [...new Set(unique.map((r) => r.customer).filter(Boolean))] as string[]
+  // แปลงรหัสลูกค้าที่ต้นทางสะกดผิดตอนหา/สร้างลูกค้าเท่านั้น — r.hash คิดจากรหัสในไฟล์จริงไปแล้ว
+  // และต้องไม่เปลี่ยน ไม่งั้นไฟล์เดิมที่อัปซ้ำจะถูกนับเป็นเที่ยวใหม่ (ดู canonCustomer)
+  const customerCodes = [
+    ...new Set(unique.map((r) => canonCustomer(r.customer)).filter(Boolean)),
+  ] as string[]
   const vtypeCodes = [...new Set(unique.map((r) => r.vehicleType).filter(Boolean))] as string[]
   const plates = [...new Set(unique.map((r) => r.plate).filter(Boolean))] as string[]
 
@@ -215,7 +219,7 @@ export async function ingestRows(
       job_date: r.date,
       seq_no: r.seq,
       segment: r.segment,
-      customer_id: (r.customer && customerIds.get(r.customer)) || null,
+      customer_id: (r.customer && customerIds.get(canonCustomer(r.customer) as string)) || null,
       vehicle_type_id: (r.vehicleType && vtypeIds.get(r.vehicleType)) || null,
       vehicle_id: (r.plate && vehicleIds.get(r.plate)) || null,
       route_raw: r.route,

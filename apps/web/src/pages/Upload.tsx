@@ -21,6 +21,7 @@ import {
 import { downloadJobTemplate } from '../lib/template'
 import type { WorkerResult } from '../lib/xlsxWorker'
 import { fmtDateShort, fmtMoney, fmtNum } from '../lib/format'
+import { canonCustomer } from '../lib/normalize'
 import { IconDownload, IconFile, IconUpload } from '../components/icons'
 
 type Stage = 'idle' | 'reading' | 'preview' | 'importing' | 'done'
@@ -241,7 +242,7 @@ export default function Upload() {
       if (r.date < from) from = r.date
       if (r.date > to) to = r.date
       drivers.add(`${r.driverPhone}|${r.driverName}`)
-      if (r.customer) customers.add(r.customer)
+      if (r.customer) customers.add(canonCustomer(r.customer) as string)
     }
     return { from, to, drivers: drivers.size, customers: customers.size }
   }, [clean])
@@ -586,7 +587,7 @@ export default function Upload() {
                             )}
                           </td>
                           <td>
-                            <span className="badge">{r.customer ?? '—'}</span>
+                            <span className="badge">{canonCustomer(r.customer) ?? '—'}</span>
                           </td>
                           <td>{r.driverName}</td>
                           <td className="mono nowrap">{r.driverPhone}</td>
