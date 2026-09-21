@@ -28,6 +28,7 @@ function RouteField({
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -40,12 +41,14 @@ function RouteField({
 
   const q = value.trim().toLowerCase()
   const filtered = (q ? suggestions.filter((s) => s.route_raw.toLowerCase().includes(q)) : suggestions).slice(0, 8)
+  const showClear = value.length > 0
 
   return (
-    <div className="route-field" ref={wrapRef}>
+    <div className={`route-field combo${showClear ? ' combo-has-clear' : ''}`} ref={wrapRef}>
       <input
         id="rt"
-        type="search"
+        ref={inputRef}
+        type="text"
         autoComplete="off"
         placeholder="เช่น ระยอง, คลังสุวินทวงศ์, แหลมฉบัง"
         value={value}
@@ -58,6 +61,62 @@ function RouteField({
           if (e.key === 'Escape') setOpen(false)
         }}
       />
+
+      {showClear && (
+        <button
+          type="button"
+          className="combo-clear"
+          tabIndex={-1}
+          aria-label="ล้างค่าที่เลือก"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onChange('')
+            setOpen(false)
+            inputRef.current?.focus()
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+
+      <button
+        type="button"
+        className="combo-toggle"
+        tabIndex={-1}
+        aria-label={open ? 'ปิดรายการ' : 'เปิดรายการ'}
+        onClick={() => {
+          setOpen((prev) => !prev)
+          inputRef.current?.focus()
+        }}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .15s' }}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
       {open && filtered.length > 0 && (
         <ul className="combo-list" role="listbox">
           {filtered.map((s) => (
@@ -86,11 +145,31 @@ export default function FindDriver() {
   const [customer, setCustomer] = useState('')
   const [vehicleType, setVehicleType] = useState('')
   const [route, setRoute] = useState('')
+  const [routeStrict, setRouteStrict] = useState(false)
+  // ลูกค้ากับประเภทรถกรองเข้มอยู่แล้วเป็นค่าเริ่มต้น (ต่างจากเส้นทาง) — ติ๊กออกคือเปลี่ยน
+  // เป็นแค่จัดลำดับ
+  const [customerStrict, setCustomerStrict] = useState(true)
+  const [vehicleTypeStrict, setVehicleTypeStrict] = useState(true)
   const [submitted, setSubmitted] = useState<{
     customer: string
     vehicleType: string
     route: string
+    routeStrict: boolean
+    customerStrict: boolean
+    vehicleTypeStrict: boolean
   } | null>(null)
+
+  // ล้างช่องแล้วสวิตช์ของช่องนั้นต้องกลับเป็นค่าเริ่มต้นด้วย — สวิตช์ซ่อนอยู่ตอนช่องว่าง
+  // ถ้าปล่อยค้างเป็นปิดไว้ มันยังแอบกำหนดการแคบตัวเลือกของอีกช่องอยู่โดยผู้ใช้มองไม่เห็น
+  // (เส้นทางไม่ทำแบบนี้ เพราะพิมพ์ลบแล้วพิมพ์ใหม่เป็นเรื่องปกติ ไม่ควรต้องติ๊กซ้ำทุกครั้ง)
+  const changeCustomer = (v: string) => {
+    setCustomer(v)
+    if (!v) setCustomerStrict(true)
+  }
+  const changeVehicleType = (v: string) => {
+    setVehicleType(v)
+    if (!v) setVehicleTypeStrict(true)
+  }
 
   // จุดฟ้าข้างป้ายชื่อบอกว่าช่องไหนควรกรอกถัดไป — ไม่มีพื้นหลังไฮไลท์แล้ว
   // (เอาออกตามที่แจ้ง) แค่จุดเล็ก ๆ ยังคงไว้ ข้ามช่องไหนก็ได้เหมือนเดิม
@@ -116,11 +195,6 @@ export default function FindDriver() {
     staleTime: 30 * 60_000,
   })
 
-  const customerOpts: ComboOption[] = useMemo(
-    () => (customers.data ?? []).map((c) => ({ value: c.code, label: c.code })),
-    [customers.data],
-  )
-
   // uuid จริงของค่าที่เลือกไว้ — ใช้กรอง jobs ตรง ๆ (มี customer_id/vehicle_type_id
   // อยู่แถวเดียวกันอยู่แล้ว) แทนที่จะเทียบด้วย code ผ่านการ embed ซึ่งซับซ้อนกว่า
   const customerId = useMemo(
@@ -132,79 +206,89 @@ export default function FindDriver() {
     [vehicleTypes.data, vehicleType],
   )
 
-  // เลือกลูกค้าแล้วเปลี่ยนใจเลือกลูกค้าใหม่ — ประเภทรถ/เส้นทางที่เลือกไว้ก่อนหน้า
-  // อาจไม่ใช่สิ่งที่ลูกค้าใหม่เคยใช้เลย ต้องล้างทิ้งไม่งั้นจะค้นด้วยเงื่อนไขที่เป็นไปไม่ได้
-  // (ลูกค้า A + ประเภทรถที่ลูกค้า A ไม่เคยใช้) แบบไม่มีใครรู้ตัว
-  useEffect(() => {
-    setVehicleType('')
-    setRoute('')
-  }, [customer])
-  useEffect(() => {
-    setRoute('')
-  }, [vehicleType])
-
-  // ประเภทรถที่ลูกค้ารายนี้เคยใช้จริง — กรองไล่ต่อกันทั้งสาย (ลูกค้า → รถ → เส้นทาง)
-  // ยังไม่เลือกลูกค้าก็โชว์ทุกประเภทเหมือนเดิม ไม่บังคับต้องเลือกลูกค้าก่อน
-  const vtByCustomer = useQuery({
-    queryKey: ['jobs-vehicle-types', customerId],
-    enabled: !!customerId,
-    staleTime: 5 * 60_000,
+  // คู่ (ลูกค้า, ประเภทรถ) ที่เคยมีงานจริง — ใช้แคบตัวเลือกของสองช่องนี้หากันได้ทั้งสองทาง
+  // (โหลดไม่สำเร็จหรือไม่มีแถวเลย = ไม่มีข้อมูลให้แคบ ใช้รายการเต็ม ไม่แคบจนช่องว่างเปล่า)
+  // เลือกช่องไหนก่อนก็ได้ ค่าที่เลือกไว้แล้วจึงไม่ต้องถูกล้างเวลาเปลี่ยนอีกช่อง: ตัวเลือก
+  // ของช่องหนึ่งถูกกรองด้วยค่าของอีกช่องอยู่แล้ว ค่าที่เลือกได้จึงเป็นคู่ที่มีงานจริงเสมอ
+  // (ทั้งก้อนมีไม่กี่ร้อยแถว ดึงครั้งเดียวแล้วคำนวณในเครื่อง ไม่ต้องยิงใหม่ทุกครั้งที่เลือก)
+  //
+  // แคบเฉพาะตอนที่ทั้งสองช่องเป็นโหมดกรองเข้ม: ช่องที่ปิดติ๊กแปลว่า "ใครก็ได้ แค่ขอคนที่
+  // เคยวิ่งค่านี้ขึ้นก่อน" ไม่ได้ต้องการให้ค่านั้นมีงานคู่กับอีกช่องจริง ถ้ายังแคบอยู่
+  // จะเลือกคู่ที่ไม่เคยมีงานร่วมกัน (เช่น ขอเรียงลูกค้า X ก่อน แต่กรองรถประเภทที่ X ไม่เคยใช้)
+  // ไม่ได้ ทั้งที่เป็นสิ่งที่โหมดจัดลำดับมีไว้ให้ทำ
+  const narrowByPairs = customerStrict && vehicleTypeStrict
+  const pairs = useQuery({
+    queryKey: ['job-customer-vehicle-pairs'],
+    staleTime: 30 * 60_000,
     queryFn: async () => {
-      // .limit() ชัดเจน กัน PostgREST ตัดที่ค่า default (1000 แถว) แบบเงียบ ๆ
-      // ถ้าลูกค้ารายนี้มีประวัติงานเกิน 1000 เที่ยว — ตอนนี้ระบบมีงานรวมกันแค่ ~7,500
-      // เที่ยว ตั้งเพดานสูงกว่านั้นไว้เผื่ออนาคต ดีกว่าปล่อยให้ default มาตัดโดยไม่รู้ตัว
       const { data, error } = await supabase
-        .from('jobs')
-        .select('vehicle_types(code, name)')
-        .eq('customer_id', customerId as string)
-        .limit(10_000)
+        .from('job_customer_vehicle_pairs')
+        .select('*')
+        .limit(5000)
       if (error) throw error
-      const seen = new Map<string, ComboOption>()
-      for (const row of data ?? []) {
-        // supabase-js สรุปชนิดของ embed ต้นทาง-หนึ่ง เป็นอาเรย์เสมอในระดับ type
-        // (ไม่รู้จาก FK ว่าเป็น to-one) แต่ runtime จริงคืนเป็นอ็อบเจกต์เดี่ยวหรือ null
-        const raw = row.vehicle_types as unknown as
-          | { code: string; name: string | null }
-          | { code: string; name: string | null }[]
-          | null
-        const vt = Array.isArray(raw) ? raw[0] : raw
-        if (vt && !seen.has(vt.code)) {
-          seen.set(vt.code, { value: vt.code, label: vt.code, hint: vt.name ?? undefined })
-        }
-      }
-      return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
+      return (data ?? []) as {
+        customer_code: string
+        vehicle_type_code: string
+        vehicle_type_name: string | null
+      }[]
     },
   })
 
+  // ยังไม่เลือกประเภทรถก็โชว์ทุกลูกค้า — ไม่บังคับต้องเลือกช่องไหนก่อน
+  const customerOpts: ComboOption[] = useMemo(() => {
+    const allowed =
+      narrowByPairs && vehicleType && pairs.data?.length
+        ? new Set(pairs.data.filter((p) => p.vehicle_type_code === vehicleType).map((p) => p.customer_code))
+        : null
+    return (customers.data ?? [])
+      .filter((c) => !allowed || allowed.has(c.code))
+      .map((c) => ({ value: c.code, label: c.code }))
+  }, [customers.data, pairs.data, vehicleType, narrowByPairs])
+
   const vtOpts: ComboOption[] = useMemo(() => {
-    if (customer && vtByCustomer.data) return vtByCustomer.data
+    if (narrowByPairs && customer && pairs.data?.length) {
+      const seen = new Map<string, ComboOption>()
+      for (const p of pairs.data) {
+        if (p.customer_code === customer && !seen.has(p.vehicle_type_code)) {
+          seen.set(p.vehicle_type_code, {
+            value: p.vehicle_type_code,
+            label: p.vehicle_type_code,
+            hint: p.vehicle_type_name ?? undefined,
+          })
+        }
+      }
+      return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
+    }
     return (vehicleTypes.data ?? []).map((v) => ({
       value: v.code,
       label: v.code,
       hint: v.name ?? undefined,
     }))
-  }, [customer, vtByCustomer.data, vehicleTypes.data])
+  }, [customer, pairs.data, vehicleTypes.data, narrowByPairs])
 
   // เส้นทางที่เคยวิ่งจริงกับลูกค้า/ประเภทรถที่เลือกไว้ — ยังไม่เลือกอะไรเลยก็กลับไปใช้
-  // รายการยอดนิยมทั้งระบบผ่าน search_routes() เหมือนเดิม
+  // รายการยอดนิยมทั้งระบบผ่าน search_routes() เหมือนเดิม — ช่องที่ปิดติ๊ก (จัดลำดับ) ไม่นำมา
+  // จำกัดรายการ เหตุผลเดียวกับการแคบตัวเลือกด้านบน
+  const sugCustomerId = customerStrict ? customerId : undefined
+  const sugVehicleTypeId = vehicleTypeStrict ? vehicleTypeId : undefined
   const routeSuggestions = useQuery({
-    queryKey: ['route_suggestions', customerId, vehicleTypeId],
+    queryKey: ['route_suggestions', sugCustomerId, sugVehicleTypeId],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      if (!customerId && !vehicleTypeId) {
+      if (!sugCustomerId && !sugVehicleTypeId) {
         const { data, error } = await supabase.rpc('search_routes', { p_limit: 500 })
         if (error) throw error
         return (data ?? []) as RouteSuggestion[]
       }
-      // .limit() เหตุผลเดียวกับ vtByCustomer ด้านบน — ไม่งั้นลูกค้าที่มีงานเกิน 1,000
-      // เที่ยวจะได้อันดับเส้นทางที่นับจากแค่บางส่วนของประวัติจริงแบบไม่มีใครรู้ตัว
+      // .limit() ชัดเจน กัน PostgREST ตัดที่ค่า default (1000 แถว) แบบเงียบ ๆ — ไม่งั้น
+      // ลูกค้าที่มีงานเกิน 1,000 เที่ยวจะได้อันดับเส้นทางที่นับจากแค่บางส่วนของประวัติจริง
       let q = supabase
         .from('jobs')
         .select('route_raw')
         .not('route_raw', 'is', null)
         .limit(10_000)
-      if (customerId) q = q.eq('customer_id', customerId)
-      if (vehicleTypeId) q = q.eq('vehicle_type_id', vehicleTypeId)
+      if (sugCustomerId) q = q.eq('customer_id', sugCustomerId)
+      if (sugVehicleTypeId) q = q.eq('vehicle_type_id', sugVehicleTypeId)
       const { data, error } = await q
       if (error) throw error
       const counts = new Map<string, number>()
@@ -220,9 +304,10 @@ export default function FindDriver() {
   })
 
   // เดิมจำกัดไว้ 25 แบบตายตัวและไม่มีทางเห็นว่ายังเหลืออีกเท่าไร — เปลี่ยนเป็น
-  // โหลดเพิ่มได้แทน ตั้งแต่ 0019 ตัวกรองลูกค้า/ประเภทรถ (รหัสมาตรฐาน) ตัดคนไม่ตรง
-  // เงื่อนไขออกจากผลลัพธ์เลย ส่วนเส้นทาง (พิมพ์อิสระ) ยังเป็นแค่จัดลำดับเหมือนเดิม
-  // จำนวนที่เหลือให้โหลดเพิ่มจึงอาจน้อยกว่าจำนวนคนขับที่ผ่านสถานะทั้งระบบมาก
+  // โหลดเพิ่มได้แทน ตัวกรองลูกค้า/ประเภทรถ (รหัสมาตรฐาน) ตัดคนไม่ตรงเงื่อนไขออกจากผลลัพธ์
+  // เป็นค่าเริ่มต้น (ปิดติ๊กแล้วเป็นแค่จัดลำดับ) ส่วนเส้นทาง (พิมพ์อิสระ) เริ่มที่จัดลำดับ
+  // อย่างเดียว (เปิดติ๊กแล้วกรองเข้ม) จำนวนที่เหลือให้โหลดเพิ่มจึงอาจน้อยกว่าจำนวนคนขับ
+  // ที่ผ่านสถานะทั้งระบบมาก
   const [limit, setLimit] = useState(25)
 
   const results = useQuery({
@@ -233,6 +318,11 @@ export default function FindDriver() {
         p_customer_code: submitted?.customer || null,
         p_vehicle_type_code: submitted?.vehicleType || null,
         p_route_keyword: submitted?.route.trim() || null,
+        p_route_strict: submitted?.routeStrict ?? false,
+        // ส่งเฉพาะตอนปิดติ๊ก (ค่าที่ต่างจากค่าเริ่มต้นของฟังก์ชัน) — การค้นแบบปกติจึงไม่ต้อง
+        // พึ่งพารามิเตอร์ใหม่ ยังทำงานได้แม้ฐานข้อมูลยังไม่ได้รัน migration 0024/0025
+        ...(submitted?.customerStrict === false ? { p_customer_strict: false } : {}),
+        ...(submitted?.vehicleTypeStrict === false ? { p_vehicle_type_strict: false } : {}),
         p_limit: limit,
       })
       if (error) throw error
@@ -259,45 +349,89 @@ export default function FindDriver() {
       <div className="card card-pad" style={{ marginBottom: 18 }}>
         <div className="filters-row">
           <div style={{ flex: '1 1 200px' }}>
-            <label htmlFor="cu">
-              ลูกค้า
-              {activeStep === 1 && <span className="step-dot" aria-hidden="true" />}
-            </label>
+            <div className="filter-label-row">
+              <label htmlFor="cu">
+                ลูกค้า
+                {activeStep === 1 && <span className="step-dot" aria-hidden="true" />}
+              </label>
+              {customer && (
+                <label className="strict-switch">
+                  <input
+                    type="checkbox"
+                    checked={customerStrict}
+                    onChange={(e) => setCustomerStrict(e.target.checked)}
+                  />
+                  เฉพาะคนที่เคยวิ่งให้ลูกค้ารายนี้
+                </label>
+              )}
+            </div>
             <Combobox
               id="cu"
               value={customer}
-              onChange={setCustomer}
+              onChange={changeCustomer}
               options={customerOpts}
               placeholder="ไม่ระบุ — พิมพ์ค้นหา"
               emptyText="ไม่พบลูกค้ารายนี้"
             />
           </div>
           <div style={{ flex: '1 1 180px' }}>
-            <label htmlFor="vt">
-              ประเภทรถ
-              {activeStep === 2 && <span className="step-dot" aria-hidden="true" />}
-            </label>
+            <div className="filter-label-row">
+              <label htmlFor="vt">
+                ประเภทรถ
+                {activeStep === 2 && <span className="step-dot" aria-hidden="true" />}
+              </label>
+              {vehicleType && (
+                <label className="strict-switch">
+                  <input
+                    type="checkbox"
+                    checked={vehicleTypeStrict}
+                    onChange={(e) => setVehicleTypeStrict(e.target.checked)}
+                  />
+                  เฉพาะคนที่เคยวิ่งประเภทรถนี้
+                </label>
+              )}
+            </div>
             <Combobox
               id="vt"
               value={vehicleType}
-              onChange={setVehicleType}
+              onChange={changeVehicleType}
               options={vtOpts}
               placeholder="ไม่ระบุ — พิมพ์ค้นหา"
               emptyText="ไม่พบประเภทรถนี้"
             />
           </div>
           <div style={{ flex: '2 1 240px' }}>
-            <label htmlFor="rt">
-              เส้นทาง
-              {activeStep === 3 && <span className="step-dot" aria-hidden="true" />}
-            </label>
+            <div className="filter-label-row">
+              <label htmlFor="rt">
+                เส้นทาง
+                {activeStep === 3 && <span className="step-dot" aria-hidden="true" />}
+              </label>
+              {route.trim() && (
+                <label className="strict-switch">
+                  <input
+                    type="checkbox"
+                    checked={routeStrict}
+                    onChange={(e) => setRouteStrict(e.target.checked)}
+                  />
+                  เฉพาะคนที่เคยวิ่งเส้นทางนี้
+                </label>
+              )}
+            </div>
             <RouteField value={route} onChange={setRoute} suggestions={routeSuggestions.data ?? []} />
           </div>
           <button
             className="btn btn-primary"
             onClick={() => {
               setLimit(25)
-              setSubmitted({ customer, vehicleType, route })
+              // สวิตช์มีผลเฉพาะตอนมีเส้นทางพิมพ์อยู่ — ล้างเส้นทางทิ้งแล้วค่าที่ค้างไว้ไม่ควรตามไป
+              setSubmitted({
+                customer,
+                vehicleType,
+                route,
+                routeStrict: routeStrict && !!route.trim(),
+                customerStrict: customerStrict || !customer,
+                vehicleTypeStrict: vehicleTypeStrict || !vehicleType,
+              })
             }}
           >
             ค้นหา
@@ -319,7 +453,14 @@ export default function FindDriver() {
                 className="btn btn-sm"
                 onClick={() => {
                   setLimit(25)
-                  setSubmitted({ customer: '', vehicleType: '', route: '' })
+                  setSubmitted({
+                    customer: '',
+                    vehicleType: '',
+                    route: '',
+                    routeStrict: false,
+                    customerStrict: true,
+                    vehicleTypeStrict: true,
+                  })
                 }}
               >
                 ดูอันดับรวมโดยไม่ระบุเงื่อนไข
@@ -385,6 +526,7 @@ export default function FindDriver() {
                       className="empty"
                     >
                       ไม่พบคนขับที่เคยมีประสบการณ์ตรงกับเงื่อนไขที่ระบุ ลองลดเงื่อนไขบางช่องดู
+                      {submitted?.routeStrict && ' หรือปิดสวิตช์ “เฉพาะคนที่เคยวิ่งเส้นทางนี้”'}
                     </td>
                   </tr>
                 )}

@@ -1834,6 +1834,35 @@ th[aria-sort] .arrow {
 
 /* จุดเล็ก ๆ ข้างป้ายชื่อ บอกว่าช่องไหนเป็น "ขั้นถัดไปที่ควรกรอก" (หน้าหา พขร. เพื่อเข้ารับงาน)
  * ตั้งใจไม่มีพื้นหลัง/กรอบไฮไลท์แล้ว — จุดอย่างเดียวพอ ไม่ต้องเน้นทั้งกล่อง */
+/* ป้ายชื่อช่อง + สวิตช์อยู่บรรทัดเดียวกัน — แถวตัวกรองจัดขอบล่าง (align-items:flex-end)
+   ถ้าสวิตช์ไปอยู่ใต้ช่องพิมพ์ ช่องนี้จะสูงขึ้นแล้วปุ่มค้นหาเลื่อนตาม */
+.filter-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 8px;
+  margin-bottom: 5px;
+}
+.filter-label-row > label:first-child {
+  margin-bottom: 0;
+}
+.strict-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.strict-switch input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--brand);
+}
 .step-dot {
   display: inline-block;
   width: 6px;
