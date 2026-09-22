@@ -121,6 +121,24 @@ def norm_code(v) -> str | None:
     return s.upper() if s else None
 
 
+# รหัสลูกค้าที่ข้อมูลต้นทางสะกดผิด → รหัสที่ถูกต้อง — ต้องตรงกับ CUSTOMER_ALIASES ใน
+# apps/web/src/lib/normalize.ts เป๊ะ (คีย์เป็นตัวพิมพ์ใหญ่ ตามที่ norm_code ให้มาแล้ว)
+#
+# ใช้ตอนสร้างตาราง customers และคอลัมน์ jobs.customer_code เท่านั้น (สองจุดนี้ต้องอิงรหัส
+# เดียวกัน เพราะ load_from_csv.sql จับคู่ jobs.customer_id ด้วย customers.code = jobs.customer_code
+# ตรง ๆ) ห้ามใช้กับค่าที่เอาไปคิด natural_key/row_hash: hash ต้องมาจากรหัสที่เขียนอยู่ในไฟล์
+# ต้นทางจริง (สะกดผิด) เพราะฝั่งอัปโหลดของเบราว์เซอร์ (ingest.ts) ก็ทำแบบเดียวกัน ถ้าแก้ก่อน
+# คิด hash ตรงนี้ การอัปโหลดไฟล์ต้นฉบับเดิมซ้ำภายหลังจะได้ hash ไม่ตรงกับที่นำเข้าไว้รอบแรก
+# แล้วสร้างเที่ยวซ้ำทั้งไฟล์
+CUSTOMER_ALIASES = {
+    "SANDAN": "SANDEN",
+}
+
+
+def canon_customer(code: str | None) -> str | None:
+    return CUSTOMER_ALIASES.get(code, code) if code else code
+
+
 def norm_plate(v) -> str | None:
     """ทะเบียน — ยุบช่องว่าง ตัดขีดหน้าหลัง"""
     s = norm_text(v)
@@ -372,7 +390,9 @@ def main() -> int:
     print(f"  คู่ (เบอร์, ชื่อ) ดิบ {n_pairs:,} -> รวมเป็น พขร. {n_drivers:,} คน")
 
     # ---------------------------------------------------------- lookups
-    customers = sorted({c for c in df["_customer"] if c})
+    # แปลงรหัสที่ต้นทางสะกดผิด (canon_customer) ตอนหาว่ามีลูกค้ากี่รายเท่านั้น — natural_key/
+    # row_hash ข้างล่างยังใช้ df["_customer"] ดิบ (ไม่แปลง) ตามที่อธิบายไว้ที่ canon_customer()
+    customers = sorted({canon_customer(c) for c in df["_customer"] if c})
     customers_df = pd.DataFrame(
         {"id": [det_uuid("customer", c) for c in customers], "code": customers, "name": customers}
     )
@@ -548,7 +568,9 @@ def main() -> int:
             "job_date": jobs_src["_date"],
             "seq_no": jobs_src["_seq"],
             "segment": jobs_src["_segment"].fillna("B2B"),
-            "customer_code": jobs_src["_customer"],
+            # แปลงรหัสตรงนี้ (ไม่ใช่ตอนคิด row_hash ด้านบน) ต้องตรงกับ customers_df.code
+            # ไม่งั้น load_from_csv.sql จะจับคู่ customer_id ไม่เจอ (join ด้วย code ตรง ๆ)
+            "customer_code": [canon_customer(c) for c in jobs_src["_customer"]],
             "vehicle_type_code": jobs_src["_vtype"],
             "plate": jobs_src["_plate"],
             "route_raw": jobs_src["_route"],
