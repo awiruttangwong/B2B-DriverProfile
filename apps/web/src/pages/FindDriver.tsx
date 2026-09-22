@@ -371,7 +371,7 @@ export default function FindDriver() {
                     checked={customerStrict}
                     onChange={(e) => setCustomerStrict(e.target.checked)}
                   />
-                  เฉพาะคนที่เคยวิ่งให้ลูกค้ารายนี้
+                  เฉพาะ พขร. ที่เคยวิ่งให้ลูกค้ารายนี้
                 </label>
               )}
             </div>
@@ -397,7 +397,7 @@ export default function FindDriver() {
                     checked={vehicleTypeStrict}
                     onChange={(e) => setVehicleTypeStrict(e.target.checked)}
                   />
-                  เฉพาะคนที่เคยวิ่งประเภทรถนี้
+                  เฉพาะ พขร. ที่เคยวิ่งประเภทรถนี้
                 </label>
               )}
             </div>
@@ -423,7 +423,7 @@ export default function FindDriver() {
                     checked={routeStrict}
                     onChange={(e) => setRouteStrict(e.target.checked)}
                   />
-                  เฉพาะคนที่เคยวิ่งเส้นทางนี้
+                  เฉพาะ พขร. ที่เคยวิ่งเส้นทางนี้
                 </label>
               )}
             </div>
@@ -550,7 +550,7 @@ export default function FindDriver() {
                       className="empty"
                     >
                       ไม่พบคนขับที่เคยมีประสบการณ์ตรงกับเงื่อนไขที่ระบุ ลองลดเงื่อนไขบางช่องดู
-                      {submitted?.routeStrict && ' หรือปิดสวิตช์ “เฉพาะคนที่เคยวิ่งเส้นทางนี้”'}
+                      {submitted?.routeStrict && ' หรือปิดสวิตช์ “เฉพาะ พขร. ที่เคยวิ่งเส้นทางนี้”'}
                     </td>
                   </tr>
                 )}
