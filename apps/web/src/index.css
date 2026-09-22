@@ -1628,6 +1628,15 @@ th[aria-sort] .arrow {
   color: var(--muted);
 }
 
+/* ไอคอนเล็ก ๆ ต่อท้ายทะเบียนที่เป็นรถบริษัท (ประวัติงานในหน้าโปรไฟล์ พขร.) — ใช้สีเดียวกับ
+   ป้ายกำกับทั่วไปในระบบ ไม่ใช่สีเน้น เพราะเป็นข้อมูลเสริม ไม่ใช่สิ่งที่ต้องดึงความสนใจ */
+.company-vehicle-badge {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-left: 4px;
+  color: var(--brand-strong);
+}
+
 /* =========================================================== อื่น ๆ */
 .note-box {
   border-left: 3px solid var(--brand);

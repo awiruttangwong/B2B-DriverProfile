@@ -27,7 +27,7 @@ import {
   OUTCOME_LABEL,
   STATUS_LABEL,
 } from '../lib/format'
-import { IconArrowLeft, IconEdit, IconPhone } from '../components/icons'
+import { IconArrowLeft, IconEdit, IconPhone, IconTruck } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 import ContactDialog from '../components/ContactDialog'
 import DocumentSlot from '../components/DocumentSlot'
@@ -490,6 +490,18 @@ export default function DriverProfile() {
                         {h.plate && (
                           <div className="muted" style={{ fontSize: 10.5 }}>
                             {h.plate}
+                            {/* ทะเบียนที่ตั้งธงไว้ว่าเป็นรถบริษัท (vehicles.is_company) —
+                                ผูกกับตัวรถ ไม่ใช่คนขับ เพราะคนขับเปลี่ยนได้ แต่รถยังเป็น
+                                รถบริษัทเหมือนเดิม */}
+                            {h.is_company && (
+                              <span
+                                className="company-vehicle-badge"
+                                title="รถบริษัท"
+                                aria-label="รถบริษัท"
+                              >
+                                <IconTruck size={11} />
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>

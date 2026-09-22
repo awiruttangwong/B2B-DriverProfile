@@ -120,6 +120,8 @@ export interface JobHistoryRow {
   overall_score: number | null
   rating_reason: string | null
   rating_tags: string[] | null
+  /** true = ทะเบียนนี้เป็นรถบริษัท (vehicles.is_company) — 0030 */
+  is_company: boolean | null
 }
 
 /** view: driver_customer_perf — ผลงานแยกตามลูกค้า */
