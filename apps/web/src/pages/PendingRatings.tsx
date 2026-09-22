@@ -228,8 +228,10 @@ export default function PendingRatings() {
               <th>พขร.</th>
               <th>เบอร์โทร</th>
               <th style={{ textAlign: 'center' }}>เที่ยววิ่งสะสม</th>
-              <th>งานล่าสุด</th>
-              <th />
+              <th style={{ textAlign: 'center' }}>งานล่าสุด</th>
+              <th className="col-action" style={{ textAlign: 'center' }}>
+                สถานะ
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -256,10 +258,10 @@ export default function PendingRatings() {
                 <td className="num" style={{ textAlign: 'center' }}>
                   {fmtNum(r.total_jobs)}
                 </td>
-                <td className="nowrap mono" style={{ fontSize: 12 }}>
+                <td className="nowrap mono" style={{ fontSize: 12, textAlign: 'center' }}>
                   {fmtDateShort(r.last_job_date)}
                 </td>
-                <td className="nowrap right">
+                <td className="nowrap col-action" style={{ textAlign: 'center' }}>
                   {can('admin', 'ops', 'hr') ? (
                     <button
                       className="btn btn-sm"

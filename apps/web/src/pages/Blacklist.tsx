@@ -70,7 +70,9 @@ export default function Blacklist() {
               <th>เหตุผล</th>
               <th style={{ textAlign: 'center' }}>ขึ้นแบล็คลิสต์เมื่อ</th>
               <th style={{ textAlign: 'center' }}>ผู้บันทึก</th>
-              <th>สถานะ</th>
+              <th className="col-action" style={{ textAlign: 'center' }}>
+                สถานะ
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -117,7 +119,7 @@ export default function Blacklist() {
                     <td className="nowrap" style={{ fontSize: 13, textAlign: 'center' }}>
                       {entry?.changed_by_name ?? '—'}
                     </td>
-                    <td className="nowrap">
+                    <td className="nowrap col-action" style={{ textAlign: 'center' }}>
                       {can('admin', 'ops', 'hr') ? (
                         <button className="btn btn-sm" onClick={() => setStatusFor(d)}>
                           เปลี่ยนสถานะ

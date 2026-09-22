@@ -384,7 +384,7 @@ export default function Drivers() {
                 คะแนนประเมิน
               </Th>
               <Th k="last_job_date">งานล่าสุด</Th>
-              <th>สถานะ</th>
+              <th className="col-action">สถานะ</th>
             </tr>
           </thead>
           <tbody>
@@ -443,7 +443,7 @@ export default function Drivers() {
                   <td className="nowrap muted" style={{ fontSize: 13 }}>
                     {fmtSince(d.days_since_last_job)}
                   </td>
-                  <td>
+                  <td className="col-action">
                     {can('admin', 'hr', 'ops') ? (
                       <button
                         type="button"
