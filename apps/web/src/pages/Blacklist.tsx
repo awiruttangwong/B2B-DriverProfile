@@ -8,6 +8,9 @@ import { fmtDateShort, fmtNum, fmtPhone } from '../lib/format'
 import StatusDialog from '../components/StatusDialog'
 import { IconBan } from '../components/icons'
 
+/** เฉพาะคอลัมน์ที่หน้านี้ใช้จริงจาก driver_status_log — ไม่ได้ดึงทั้งแถว */
+type BlacklistLogRow = Pick<DriverStatusLogRow, 'driver_id' | 'changed_at' | 'changed_by_name'>
+
 export default function Blacklist() {
   const { can } = useAuth()
   const [statusFor, setStatusFor] = useState<DriverDirectoryRow | null>(null)
@@ -25,23 +28,31 @@ export default function Blacklist() {
     },
   })
 
-  // "ขึ้นบัญชีดำเมื่อไร ใครสั่ง" ไม่ได้อยู่ใน driver_directory (แค่สถานะปัจจุบัน) ต้องแยกไปดู
-  // ประวัติ — เอาแค่ครั้งล่าสุดที่เปลี่ยน "เป็น" blacklisted ต่อคน (คนหนึ่งอาจเคยเข้า-ออกบัญชี
-  // ดำหลายรอบ เอาครั้งล่าสุดพอ) ผูกกับตารางที่ query แยกเพราะ driver_status_log ไม่มี join
-  // สำเร็จรูปกับ driver_directory ให้ในคำสั่งเดียว และ view เดิมทั้งสองใช้กันคนละที่อยู่แล้ว
+  // "ขึ้นแบล็คลิสต์เมื่อไร ใครบันทึก" ไม่ได้อยู่ใน driver_directory (มีแค่สถานะปัจจุบัน) ต้องแยก
+  // ไปดูประวัติ — เอาแค่ครั้งล่าสุดที่เปลี่ยน "เป็น" blacklisted ต่อคน (คนหนึ่งอาจเคยเข้า-ออก
+  // แบล็คลิสต์หลายรอบ เอาครั้งล่าสุดพอ)
+  //
+  // จำกัดด้วย .in(driver_id) ของคนที่อยู่ในแบล็คลิสต์จริงตอนนี้เท่านั้น ไม่ดึงประวัติทั้งตาราง:
+  // driver_status_history โตขึ้นเรื่อย ๆ ตามทุกการเปลี่ยนสถานะที่เคยเกิด รวมคนที่ถูกปลดออกไป
+  // นานแล้วด้วย ถ้าดึงหมดแล้ววันหนึ่งชนเพดานแถวของ PostgREST (ปกติ 1000) ผลจะถูกตัดเงียบ ๆ
+  // โดยเรียงใหม่→เก่า คนที่ขึ้นแบล็คลิสต์มานานแล้วจะหลุดออกจากผลจนคอลัมน์วันที่/ผู้บันทึก
+  // กลายเป็น "—" ทั้งที่มีข้อมูลอยู่ — จำนวนคนในแบล็คลิสต์เป็นตัวเลขเล็กเสมอ จึงคุมขนาดได้แน่นอน
+  const driverIds = (drivers.data ?? []).map((d) => d.id)
   const log = useQuery({
-    queryKey: ['blacklist', 'log'],
+    queryKey: ['blacklist', 'log', driverIds],
+    enabled: driverIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('driver_status_log')
-        .select('*')
+        .select('driver_id, changed_at, changed_by_name')
         .eq('to_status', 'blacklisted')
+        .in('driver_id', driverIds)
         .order('changed_at', { ascending: false })
       if (error) throw error
-      return (data ?? []) as DriverStatusLogRow[]
+      return (data ?? []) as BlacklistLogRow[]
     },
   })
-  const latestByDriver = new Map<string, DriverStatusLogRow>()
+  const latestByDriver = new Map<string, BlacklistLogRow>()
   for (const row of log.data ?? []) {
     if (!latestByDriver.has(row.driver_id)) latestByDriver.set(row.driver_id, row)
   }

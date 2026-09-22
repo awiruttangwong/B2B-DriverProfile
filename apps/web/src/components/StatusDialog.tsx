@@ -85,6 +85,11 @@ export default function StatusDialog({
       // ทั้งที่คนนั้นหลุดออกไปแล้ว — เห็นชัดตอนไล่ปิดสถานะคนที่ไม่ใช้งานทีละหลายคน
       void qc.invalidateQueries({ queryKey: ['pending'] })
       void qc.invalidateQueries({ queryKey: ['pending-count'] })
+      // เหตุผลเดียวกันกับสองอันบน แต่เป็นฝั่งแบล็คลิสต์ — สถานะ blacklisted คือตัวกำหนด
+      // ทั้งแถวในหน้าแบล็คลิสต์และตัวเลขบนเมนู ถ้าไม่ล้าง การปลดคนออกจากแบล็คลิสต์
+      // (ซึ่งเป็นปุ่มหลักของหน้านั้น) จะไม่เห็นผลอะไรเลย แถวเดิมค้างอยู่เหมือนกดไม่ติด
+      void qc.invalidateQueries({ queryKey: ['blacklist'] })
+      void qc.invalidateQueries({ queryKey: ['blacklist-count'] })
       onClose()
     },
     onError: (e: Error) => setErr(translate(e.message)),
