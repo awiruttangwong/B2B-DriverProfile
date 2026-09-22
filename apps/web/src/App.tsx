@@ -36,6 +36,41 @@ function initials(name: string): string {
 }
 
 /**
+ * ป้ายอวตารที่ตั้งไว้เองรายบัญชี ใช้แทนผลจาก initials() ตรง ๆ — initials() ตัดแค่ 2 ตัวอักษร
+ * แรกของคำเดียว ซึ่งพอเจอชื่อที่ขึ้นต้นเหมือนกัน (พี่โบ๊ท/พี่ชา/พี่ซ้ง) จะได้ "พี" เหมือนกัน
+ * หมดจนแยกคนไม่ออก หรือคำขาดกลางดูแปลก (จี๊ด -> จี) รายชื่อนี้เจ้าของบัญชีเลือกเองทีละคน
+ * ทาง Claude/แชท ไม่ใช่กติกาอัตโนมัติ
+ *
+ * คีย์เป็นอีเมล ไม่ใช่ full_name เพราะ full_name แก้ไขเองได้ทีหลัง อีเมลผูกกับบัญชีตายตัวกว่า
+ */
+const AVATAR_OVERRIDES: Record<string, string> = {
+  'admin@2klogistics.co.th': 'Admin',
+  'awirut.tan@2klogistics.co.th': 'DATA',
+  'transport@2klogistics.co.th': 'โบ๊ท',
+  'pracha2kl@gmail.com': 'ชา',
+  'ptrwd25644@gmail.com': 'แก้ว',
+  '2kl.transport0013@gmail.com': 'ซ้ง',
+  'admtsp2kl@gmail.com': 'จี๊ด',
+  'datacenter@2klogistics.co.th': 'DATA',
+}
+
+function avatarLabel(name: string, email: string | null | undefined): string {
+  if (email && AVATAR_OVERRIDES[email]) return AVATAR_OVERRIDES[email]!
+  return initials(name)
+}
+
+/**
+ * initials() เองไม่เคยยาวเกิน 3 ตัวอักษร จึงพอดีวงกลม 28px ที่ font-size ปกติ (10.5px) เสมอ
+ * แต่ AVATAR_OVERRIDES ตั้งเองได้ยาวกว่านั้น (เช่น "Admin" 5 ตัวอักษรละติน) ซึ่งล้นวงกลมถ้าใช้
+ * ขนาดเดิม — ตัวอักษรไทยที่ยาวเท่ากัน (จี๊ด, แก้ว, โบ๊ท ฯลฯ) ไม่มีปัญหานี้เพราะสระ/วรรณยุกต์
+ * ซ้อนไม่กินความกว้างเพิ่ม มีแค่ละตินล้วนยาว ๆ เท่านั้นที่ต้องลดขนาดลง (วัดจริงกับตัวอักษร
+ * ที่ตั้งไว้ทุกตัวแล้วด้วยหน้าจอทดสอบแยก — "Admin" ล้นที่ 10.5px พอดีที่ 9px ตัวอื่นพอดีอยู่แล้ว)
+ */
+function avatarFontSize(label: string): number {
+  return label.length > 4 ? 9 : 10.5
+}
+
+/**
  * ย่อขนาดตัวอักษรชื่อ/อีเมลอัตโนมัติตามความยาว แทนการตัดด้วย ... เพราะบางบัญชี
  * ใช้อีเมลยาว (เช่น 2kl.transport0013@gmail.com) ต้องเห็นอีเมลเต็มเพื่อยืนยันว่า
  * เข้าระบบด้วยบัญชีที่ถูกต้อง
@@ -168,6 +203,7 @@ function Shell() {
   // ผู้ใช้ต้องเห็นอีเมลเต็มเพื่อยืนยันว่ากำลังใช้บัญชีไหนอยู่ ชื่อเล่นไปโชว์เป็น title
   // (hover เห็น) แทน ไม่ได้หายไปไหน
   const displayName = session.user.email ?? profile?.full_name ?? '?'
+  const avatar = avatarLabel(profile?.full_name ?? displayName, session.user.email)
 
   return (
     <div className="app">
@@ -197,8 +233,8 @@ function Shell() {
             </div>
             <div className="account-card">
               <div className="user-card">
-                <span className="user-avatar" aria-hidden="true">
-                  {initials(profile?.full_name ?? displayName)}
+                <span className="user-avatar" aria-hidden="true" style={{ fontSize: avatarFontSize(avatar) }}>
+                  {avatar}
                 </span>
                 <span className="user-info">
                   <b
