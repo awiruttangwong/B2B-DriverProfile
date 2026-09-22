@@ -23,7 +23,7 @@ const EMPTY = {
 }
 
 export default function NewJob() {
-  const { can } = useAuth()
+  const { can, loading: authLoading } = useAuth()
   const qc = useQueryClient()
   const [form, setForm] = useState({ ...EMPTY })
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -183,7 +183,11 @@ export default function NewJob() {
         </div>
       </div>
 
-      {!allowed && (
+      {/* ตอนเปิดหน้านี้ตรง ๆ (พิมพ์ URL เอง/รีเฟรช) profile ยังไม่มาจาก DB (allowed จึงเป็น
+          false ชั่วคราวไม่ต่างจากคนไม่มีสิทธิ์จริง) ต้องรอ authLoading จบก่อนค่อยฟันธงว่า
+          ไม่มีสิทธิ์ ไม่งั้นแอดมิน/hr/ops จะเห็นข้อความนี้โผล่วาบตอนเน็ตช้าทั้งที่มีสิทธิ์
+          (รูปแบบเดียวกับที่ /activity-log ใน App.tsx ใช้อยู่แล้ว) */}
+      {!authLoading && !allowed && (
         <div className="note-box err" style={{ marginBottom: 18 }}>
           บัญชีของคุณเป็นสิทธิ์อ่านอย่างเดียว จึงบันทึกงานไม่ได้
         </div>

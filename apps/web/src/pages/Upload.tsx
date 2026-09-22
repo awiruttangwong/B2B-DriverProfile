@@ -45,7 +45,7 @@ const SHOWN_FIELDS: Field[] = [
 ]
 
 export default function Upload() {
-  const { can } = useAuth()
+  const { can, loading: authLoading } = useAuth()
   const qc = useQueryClient()
   const [stage, setStage] = useState<Stage>('idle')
   const [filename, setFilename] = useState('')
@@ -261,7 +261,9 @@ export default function Upload() {
         </div>
       </div>
 
-      {!allowed && (
+      {/* เหตุผลเดียวกับ NewJob.tsx — ระหว่าง profile ยังโหลดไม่เสร็จ allowed เป็น false
+          ชั่วคราว ต้องรอ authLoading จบก่อนค่อยฟันธงว่าไม่มีสิทธิ์ */}
+      {!authLoading && !allowed && (
         <div className="note-box err" style={{ marginBottom: 18 }}>
           บัญชีของคุณเป็นสิทธิ์อ่านอย่างเดียว จึงอัปโหลดไม่ได้ — ให้ผู้ดูแลเลื่อนสิทธิ์เป็น ops ก่อน
         </div>
