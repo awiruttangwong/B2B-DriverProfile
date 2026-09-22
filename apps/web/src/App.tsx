@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './lib/auth'
 import { IS_DEMO, supabase } from './lib/supabase'
 import { roleLabel, fmtNum } from './lib/format'
 import {
+  IconBan,
   IconClock,
   IconLogout,
   IconStar,
@@ -19,6 +20,7 @@ import Drivers from './pages/Drivers'
 import DriverProfile from './pages/DriverProfile'
 import FindDriver from './pages/FindDriver'
 import PendingRatings from './pages/PendingRatings'
+import Blacklist from './pages/Blacklist'
 import Upload from './pages/Upload'
 import NewJob from './pages/NewJob'
 import ActivityLog from './pages/ActivityLog'
@@ -120,9 +122,27 @@ function usePendingCount() {
   return data
 }
 
+function useBlacklistCount() {
+  const { data } = useQuery({
+    queryKey: ['blacklist-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('driver_directory')
+        .select('id', { count: 'exact' })
+        .eq('status', 'blacklisted')
+        .limit(1)
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 2 * 60_000,
+  })
+  return data
+}
+
 function NavLinks() {
   const { canSeeActivityLog } = useAuth()
   const pending = usePendingCount()
+  const blacklisted = useBlacklistCount()
   return (
     <nav className="nav" aria-label="เมนูหลัก">
       <Tab to="/drivers" icon={<IconUsers />}>
@@ -133,6 +153,9 @@ function NavLinks() {
       </Tab>
       <Tab to="/pending" icon={<IconStar />} count={pending}>
         รอประเมิน
+      </Tab>
+      <Tab to="/blacklist" icon={<IconBan />} count={blacklisted}>
+        แบล็คลิสต์
       </Tab>
       <Tab to="/jobs/new" icon={<IconTruck />}>
         บันทึกงาน
@@ -270,6 +293,7 @@ function Shell() {
             <Route path="/drivers/:id" element={<DriverProfile />} />
             <Route path="/find" element={<FindDriver />} />
             <Route path="/pending" element={<PendingRatings />} />
+            <Route path="/blacklist" element={<Blacklist />} />
             <Route path="/jobs/new" element={<NewJob />} />
             <Route path="/upload" element={<Upload />} />
             <Route
