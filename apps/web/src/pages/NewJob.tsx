@@ -231,19 +231,13 @@ export default function NewJob() {
             <input
               id="rt"
               type="text"
-              placeholder="ต้นทาง - ปลายทาง (เช่น คลังสุวินทวงศ์ - นครปฐม)"
               value={form.route}
               onChange={(e) => set('route', e.target.value)}
             />
-            {routeParts.origin ? (
+            {routeParts.origin && (
               <div className="hint" style={{ color: 'var(--brand-strong)' }}>
                 แยกได้แล้ว — ต้นทาง <strong>{routeParts.origin}</strong> · ปลายทาง{' '}
                 <strong>{routeParts.destination}</strong>
-              </div>
-            ) : (
-              <div className="hint">
-                คั่นด้วย “ - ” (เว้นวรรคหน้าหลัง) ระบบจะแยกต้นทางกับปลายทางให้เอง
-                เพื่อใช้จัดอันดับตามความชำนาญเส้นทาง
               </div>
             )}
           </div>
@@ -419,7 +413,6 @@ export default function NewJob() {
             <input
               id="nt"
               type="text"
-              placeholder="เช่น มีเอกสาร · น้ำหนัก 2,982 กก. · เหมา"
               value={form.note}
               onChange={(e) => set('note', e.target.value)}
             />
