@@ -19,16 +19,23 @@
   --brand-line: #b9e2f8;
   --meter-track: #c9e7fa;
 
-  /* --- neutral เอียงฟ้าเล็กน้อยให้เข้ากับแบรนด์ --- */
-  --ground: #f4f7fa;
+  /* --- neutral เอียงฟ้าเล็กน้อยให้เข้ากับแบรนด์ ---
+     พื้นหน้าเข้มขึ้นจาก #f4f7fa ให้การ์ดสีขาวลอยเด่นขึ้น เดิมต่างกันแค่ 3% การ์ดจึง
+     ดูละลายไปกับหน้า
+
+     เคยลองย้อมแถบข้างให้เป็นระนาบของตัวเองแบบโหมดมืดแล้ว แต่ทำไม่ได้: ตัวอักษรสีเทา
+     (--muted) บนพื้นย้อมเหลือ contrast 4.5:1 พอดีเป๊ะ ขยับอีกนิดเดียวก็ตก และป้าย
+     บัญชีผู้ใช้กับปุ่มสลับธีมในแถบข้างที่ใช้ --surface-2 จะกลืนไปกับพื้นแถบพอดี
+     จึงคงแถบข้างเป็นสีขาวไว้ แล้วไปเพิ่มระยะห่างที่พื้นหน้าแทน ซึ่งไม่มีข้อจำกัดนี้ */
+  --ground: #eaeff5;
   --surface: #ffffff;
   --surface-2: #eef3f8;
   --surface-3: #e2eaf1;
   --ink: #222222;
   --ink-2: #43505d;
   --muted: #5b6b7a;
-  --line: #dde5ed;
-  --line-strong: #c3d0dc;
+  --line: #d8e1ea;
+  --line-strong: #bdcbd9;
 
   /* --- semantic แยกจากสีแบรนด์ชัดเจน --- */
   --good: #167a4d;
@@ -38,9 +45,37 @@
   --bad: #b3261e;
   --bad-soft: #fdeceb;
 
-  --shadow-sm: 0 1px 2px rgba(20, 40, 60, 0.06);
-  --shadow: 0 1px 2px rgba(20, 40, 60, 0.06), 0 10px 24px -18px rgba(20, 40, 60, 0.4);
-  --shadow-lg: 0 24px 60px -24px rgba(15, 40, 65, 0.4);
+  /* เงาสองชั้นเสมอ: ชั้นคมติดขอบบอก "มีของวางอยู่" ชั้นฟุ้งกว้างบอกว่าลอยสูงแค่ไหน
+     ของเดิมมีแต่ชั้นคมที่จาง (6%) การ์ดเลยแบนติดหน้ากระดาษ ไม่รู้สึกว่าหยิบได้ */
+  --shadow-sm: 0 1px 2px rgba(16, 40, 66, 0.05), 0 4px 12px -6px rgba(16, 40, 66, 0.1);
+  --shadow: 0 1px 2px rgba(16, 40, 66, 0.06), 0 12px 28px -16px rgba(16, 40, 66, 0.35);
+  --shadow-lg: 0 2px 6px rgba(16, 40, 66, 0.08), 0 32px 64px -28px rgba(16, 40, 66, 0.42);
+
+  /* --- ตัวแปรสร้างมิติ — ค่าต่างกันตามธีม แต่กฎ CSS ของแต่ละชิ้นส่วนเขียนที่เดียว
+     ไม่ต้องก๊อปกฎไปเขียนซ้ำในบล็อกโหมดมืดทั้งสองบล็อก (ซึ่งพลาดง่ายมากเวลาแก้ทีหลัง)
+
+     ความลึกของสองธีมมาคนละทาง: โหมดสว่างใช้เงาสีเทาบนพื้นขาว ส่วนโหมดมืดใช้ไม่ได้
+     เพราะเงาสีดำบนพื้นเกือบดำมองไม่เห็นเลย จึงต้องใช้ระนาบพื้นหลายชั้น ขอบบนสว่างบาง ๆ
+     และแสงนวลแทน ค่าที่เป็น none ด้านล่างคือเอฟเฟกต์ที่มีเฉพาะโหมดมืด */
+  --sidebar-bg: var(--surface); /* ระนาบ "กรอบแอป" — แถบข้างและแถบบน */
+  --input-bg: #f7f9fc; /* ช่องกรอก — จมลงไปจากพื้นการ์ดสีขาว ไม่ใช่ขาวบนขาว */
+  --raised: var(--surface); /* ผิวที่ยกขึ้นมาจากพื้น — ปุ่มทั่วไป, ปุ่มธีมที่เลือกอยู่ */
+  --raised-hover: var(--surface-2);
+  --ground-fx: none; /* แสงนวลบนพื้นหลังแอป — เฉพาะโหมดมืด */
+  --ground-fx-show: none; /* โหมดสว่างไม่สร้างกล่องของเลเยอร์นี้เลย (ดู body::before) */
+  --nav-active-fx: inset 0 0 0 1px rgba(15, 151, 225, 0.25); /* ขอบเมนูที่เปิดอยู่ */
+  --btn-primary-fx: 0 6px 16px -10px rgba(10, 111, 168, 0.7); /* เงาใต้ปุ่มหลัก */
+  --thead-edge: none; /* ขอบบนสว่างของหัวตาราง — เฉพาะโหมดมืด */
+  --card-fx: none; /* แสงจาง ๆ ที่หัวการ์ด — เฉพาะโหมดมืด */
+  --scrim: rgba(10, 25, 38, 0.55); /* ฉากหลังตอนเปิดกล่องโต้ตอบ */
+
+  /* ตัวหนังสือบนพื้นสีทึบ — โหมดมืดสีแบรนด์/สีแดงสว่างขึ้นมาก ตัวหนังสือขาวบนพื้นพวกนี้
+     เหลือ contrast แค่ 1.7–2.6:1 อ่านไม่ออก จึงต้องสลับเป็นตัวหนังสือสีเข้มแทน
+     (เดิมเขียนเป็นกฎ :root[data-theme='dark'] แยกคู่กับ @media ทุกที่ที่ใช้ รวม 3 ที่
+     6 กฎ — ย้ายมาเป็นตัวแปรตัวเดียว กฎของแต่ละชิ้นส่วนจึงเขียนที่เดียวเหมือนสีอื่น) */
+  --on-brand: #fff; /* บนพื้น --brand และ --brand-strong */
+  --on-bad: #fff; /* บนพื้น --bad */
+  --btn-ink: inherit; /* ตัวหนังสือปุ่มทั่วไป — โหมดสว่างรับสีจากบริบทเหมือนเดิม */
 
   --f-brand: 'Prompt', 'Segoe UI', system-ui, sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
@@ -56,35 +91,73 @@
   color-scheme: light;
 }
 
+/* -----------------------------------------------------------------------------
+   โหมดมืด
+
+   แนวคิด: พื้นเกือบดำอมน้ำเงิน แล้ววางงานเป็น "ระนาบซ้อนชั้น" —
+     กรอบแอป (แถบข้าง)  เข้มที่สุด ถอยไปข้างหลัง
+     พื้นหน้า            เข้มรองลงมา
+     การ์ด/ตาราง         ยกขึ้นมาข้างหน้า มีขอบบนสว่างบาง ๆ เหมือนรับแสงจากด้านบน
+     ช่องกรอก            จมลงไปจากการ์ด / ปุ่มยกขึ้นมาจากการ์ด
+   ของเดิมแถบข้าง การ์ด และตาราง ใช้ --surface สีเดียวกันหมด ต่างจากพื้นหน้าแค่ราว
+   1.1 เท่า ทั้งหน้าจอจึงเป็นแผ่นสีเดียว ไม่มีลำดับชั้นให้ตาจับ = ดูเรียบจนจืด
+
+   สีตัวอักษรทุกตัวผ่าน 4.5:1 บนการ์ด (--muted ต่ำสุดที่ 5.8:1) และสีที่ใช้กับพื้น/
+   เส้น/ไอคอนผ่าน 3:1 ตามเกณฑ์เดียวกับโหมดสว่างที่อธิบายไว้หัวไฟล์
+
+   สองบล็อกล่างนี้ต้องมีค่าเหมือนกันเป๊ะ ๆ ต่างกันแค่เงื่อนไขที่ใช้เลือก
+   (บล็อกแรก = ตามค่าของ OS, บล็อกหลัง = ผู้ใช้กดเลือกเองในแอป ต้องชนะค่าของ OS)
+   แก้ค่าที่ไหนต้องแก้อีกที่ให้ตรงกันเสมอ
+   -------------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --brand: #4fb3ee;
-    --brand-strong: #7cc9f5;
-    --brand-deep: #a5dbf9;
-    --brand-soft: #0d2c40;
-    --brand-line: #1b4864;
-    --meter-track: #12354c;
+    --brand: #38a9f0;
+    --brand-strong: #7fcdf8;
+    --brand-deep: #aadffc;
+    --brand-soft: #0e2c44;
+    --brand-line: #1f5477;
+    --meter-track: #12344d;
 
-    --ground: #0d151d;
-    --surface: #16202c;
-    --surface-2: #1d2937;
-    --surface-3: #263445;
-    --ink: #e6edf3;
-    --ink-2: #b9c6d3;
-    --muted: #93a4b3;
-    --line: #26333f;
-    --line-strong: #3a4a5a;
+    --ground: #060b12;
+    --sidebar-bg: linear-gradient(180deg, #0b131d, #05090f);
+    --surface: #141f2d;
+    --surface-2: #1b2836;
+    --surface-3: #263546;
+    --input-bg: #0b131d;
+    --raised: #27364c;
+    --raised-hover: #33445e;
 
-    --good: #59c894;
-    --good-soft: #103123;
-    --warn: #dfae5a;
-    --warn-soft: #33270f;
-    --bad: #ef8078;
-    --bad-soft: #3a1a17;
+    --ink: #e9eff7;
+    --ink-2: #b8c7d6;
+    --muted: #8b9cae;
+    --line: #293747;
+    --line-strong: #3d4e63;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -18px rgba(0, 0, 0, 0.9);
-    --shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, 0.8);
+    --good: #4fd39a;
+    --good-soft: #0c2f21;
+    --warn: #e5b45f;
+    --warn-soft: #362810;
+    --bad: #f4857c;
+    --bad-soft: #3d1917;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 32px -20px rgba(0, 0, 0, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.5), 0 36px 72px -30px rgba(0, 0, 0, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    --ground-fx: radial-gradient(900px 520px at 88% -12%, rgba(56, 169, 240, 0.1), transparent 62%),
+      radial-gradient(760px 480px at 6% 106%, rgba(56, 169, 240, 0.055), transparent 58%);
+    --ground-fx-show: block;
+    --nav-active-fx: inset 0 0 0 1px rgba(56, 169, 240, 0.28);
+    --btn-primary-fx: 0 8px 22px -12px rgba(56, 169, 240, 0.9);
+    --thead-edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --card-fx: linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0) 96px);
+    --scrim: rgba(2, 6, 12, 0.72);
+
+    --on-brand: #06202e;
+    --on-bad: #2a0d0b;
+    --btn-ink: var(--ink-2);
 
     color-scheme: dark;
   }
@@ -93,39 +166,68 @@
 /* สลับธีมเองจากปุ่มในแอป ต้องชนะได้แม้ OS ตั้งเป็นสว่าง — คนละเงื่อนไขกับ
    บล็อก prefers-color-scheme ด้านบนซึ่งอ้างอิงจาก OS เท่านั้น */
 :root[data-theme='dark'] {
-  --brand: #4fb3ee;
-  --brand-strong: #7cc9f5;
-  --brand-deep: #a5dbf9;
-  --brand-soft: #0d2c40;
-  --brand-line: #1b4864;
-  --meter-track: #12354c;
+  --brand: #38a9f0;
+  --brand-strong: #7fcdf8;
+  --brand-deep: #aadffc;
+  --brand-soft: #0e2c44;
+  --brand-line: #1f5477;
+  --meter-track: #12344d;
 
-  --ground: #0d151d;
-  --surface: #16202c;
-  --surface-2: #1d2937;
-  --surface-3: #263445;
-  --ink: #e6edf3;
-  --ink-2: #b9c6d3;
-  --muted: #93a4b3;
-  --line: #26333f;
-  --line-strong: #3a4a5a;
+  --ground: #060b12;
+  --sidebar-bg: linear-gradient(180deg, #0b131d, #05090f);
+  --surface: #141f2d;
+  --surface-2: #1b2836;
+  --surface-3: #263546;
+  --input-bg: #0b131d;
+  --raised: #27364c;
+  --raised-hover: #33445e;
 
-  --good: #59c894;
-  --good-soft: #103123;
-  --warn: #dfae5a;
-  --warn-soft: #33270f;
-  --bad: #ef8078;
-  --bad-soft: #3a1a17;
+  --ink: #e9eff7;
+  --ink-2: #b8c7d6;
+  --muted: #8b9cae;
+  --line: #293747;
+  --line-strong: #3d4e63;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -18px rgba(0, 0, 0, 0.9);
-  --shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, 0.8);
+  --good: #4fd39a;
+  --good-soft: #0c2f21;
+  --warn: #e5b45f;
+  --warn-soft: #362810;
+  --bad: #f4857c;
+  --bad-soft: #3d1917;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 32px -20px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.5), 0 36px 72px -30px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --ground-fx: radial-gradient(900px 520px at 88% -12%, rgba(56, 169, 240, 0.1), transparent 62%),
+    radial-gradient(760px 480px at 6% 106%, rgba(56, 169, 240, 0.055), transparent 58%);
+  --ground-fx-show: block;
+  --nav-active-fx: inset 0 0 0 1px rgba(56, 169, 240, 0.28);
+  --btn-primary-fx: 0 8px 22px -12px rgba(56, 169, 240, 0.9);
+  --thead-edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --card-fx: linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0) 96px);
+  --scrim: rgba(2, 6, 12, 0.72);
+
+  --on-brand: #06202e;
+  --on-bad: #2a0d0b;
+  --btn-ink: var(--ink-2);
 
   color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* จังหวะครอสเฟดตอนสลับธีม (ดู applyThemeAnimated ใน lib/theme.ts) — เบราว์เซอร์
+   ครอสเฟดภาพหน้าจอก่อน-หลังให้เอง ไม่ต้องใส่ transition รายอิลิเมนต์ซึ่งหน่วงกว่ามาก
+   ฝั่ง JS กันไว้แล้วว่าถ้าผู้ใช้ตั้งค่าลดการเคลื่อนไหวจะไม่เรียกใช้ทางนี้เลย */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.26s;
+  animation-timing-function: ease;
 }
 
 html,
@@ -136,13 +238,32 @@ body,
 
 body {
   margin: 0;
-  background: var(--ground);
+  background-color: var(--ground);
   color: var(--ink);
   font-family: var(--f-brand);
   font-size: 14.5px;
   font-weight: 400;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+}
+
+/* แสงนวลจาง ๆ มุมบนขวาและล่างซ้าย ให้พื้นหลังโหมดมืดมีมิติแทนที่จะเป็นสีทึบแผ่นเดียว
+   ทำเป็นเลเยอร์ position: fixed แทนการใช้ background-attachment: fixed บน body
+   เพราะแบบหลังบังคับให้เบราว์เซอร์วาดพื้นหลังใหม่ทุกครั้งที่เลื่อนหน้า (สะดุดชัดบนมือถือ)
+   ส่วนเลเยอร์ fixed เป็นชั้นแยกที่ compositor ขยับให้เฉย ๆ ไม่ต้องวาดใหม่
+   โหมดสว่าง --ground-fx เป็น none เลเยอร์นี้จึงว่างเปล่า ไม่มีผลกับการแสดงผล */
+body::before {
+  content: '';
+  /* โหมดสว่างเป็น none — สำคัญ ไม่ใช่แค่ประหยัด: แค่ "มี" กล่อง position: fixed อยู่
+     เฉย ๆ ก็ทำให้เบราว์เซอร์เปลี่ยนวิธีลบรอยหยักตัวอักษรทั้งหน้าไปเล็กน้อยแล้ว
+     (วัดได้จริงตอนเทียบภาพ ต่างกันหมื่นกว่าพิกเซลทั้งที่เลเยอร์ยังว่างเปล่า)
+     display: none ทำให้ไม่เกิดกล่องเลย โหมดสว่างจึงเหมือนเดิมทุกพิกเซล */
+  display: var(--ground-fx-show);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--ground-fx);
 }
 
 a {
@@ -210,7 +331,7 @@ h3 {
   display: none;
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: var(--surface);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--line);
   padding: 18px 12px;
   flex-direction: column;
@@ -292,6 +413,9 @@ h3 {
   background: var(--brand-soft);
   color: var(--brand-strong);
   font-weight: 500;
+  /* ขอบในบาง ๆ สีแบรนด์ — บนพื้นมืด พื้นสี --brand-soft อย่างเดียวยังดูจมไปกับแถบข้าง
+     เส้นขอบทำให้เมนูที่เปิดอยู่ "ลอย" ขึ้นมาอ่านได้ทันที (โหมดสว่างเป็น none) */
+  box-shadow: var(--nav-active-fx);
 }
 .nav a svg {
   flex-shrink: 0;
@@ -306,9 +430,12 @@ h3 {
   padding: 0 7px;
   font-variant-numeric: tabular-nums;
 }
+/* ใช้เฉดเข้ม (--brand-strong) ไม่ใช่สีแบรนด์แท้ ด้วยเหตุผลเดียวกับ .btn-primary —
+   ป้ายนี้เป็นพื้นทึบที่มีตัวหนังสืออยู่บน สีแบรนด์แท้ให้ตัวหนังสือขาวแค่ 3.21:1
+   (ตัวเลขขนาด 11px ต้องได้ 4.5:1) เฉดเข้มให้ 5.45:1 */
 .nav a.active .count {
-  background: var(--brand);
-  color: #fff;
+  background: var(--brand-strong);
+  color: var(--on-brand);
 }
 
 .sidebar-foot {
@@ -344,7 +471,7 @@ h3 {
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .theme-toggle button.on {
-  background: var(--surface);
+  background: var(--raised);
   color: var(--brand-strong);
   font-weight: 500;
   box-shadow: var(--shadow-sm);
@@ -419,7 +546,7 @@ h3 {
 /* --- แถบบนสำหรับจอเล็ก --- */
 .topbar {
   display: flex;
-  background: var(--surface);
+  background: var(--sidebar-bg);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
@@ -470,7 +597,10 @@ h3 {
 
 /* =========================================================== ชิ้นส่วน */
 .card {
-  background: var(--surface);
+  background-color: var(--surface);
+  /* ไล่เฉดสว่างบาง ๆ จากหัวการ์ดลงมา 96px — แผ่นการ์ดในโหมดมืดจึงดูเป็นวัสดุที่รับแสง
+     จากด้านบน ไม่ใช่สี่เหลี่ยมสีเดียวทึบ ๆ (โหมดสว่างเป็น none) */
+  background-image: var(--card-fx);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
@@ -810,17 +940,9 @@ input[type='password'] {
 /* ใช้เฉดเข้ม ไม่ใช่สีแบรนด์แท้ ด้วยเหตุผลเดียวกับ .btn-primary — ตัวเลขขาวต้องได้ 4.5:1 */
 .dtp-day.is-selected {
   font-weight: 600;
-  color: #fff;
+  color: var(--on-brand);
   background: var(--brand-strong);
   box-shadow: none;
-}
-:root[data-theme='dark'] .dtp-day.is-selected {
-  color: #06202e;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .dtp-day.is-selected {
-    color: #06202e;
-  }
 }
 .dtp-day:disabled {
   color: var(--line-strong);
@@ -1057,7 +1179,9 @@ input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='r
   ):not([type='submit']):not([type='button']),
 select,
 textarea {
-  background: var(--surface);
+  /* โหมดมืดใช้พื้นที่เข้มกว่าการ์ด ช่องกรอกจึงดู "จม" ลงไปรอให้พิมพ์ ตรงข้ามกับปุ่ม
+     ที่ยกขึ้นมา — ของเดิมช่องกรอกสีเดียวกับการ์ดพอดี เหลือแค่เส้นขอบบาง ๆ บอกขอบเขต */
+  background: var(--input-bg);
   border: 1px solid var(--line-strong);
   border-radius: var(--r);
   padding: 9px 12px;
@@ -1109,7 +1233,8 @@ label {
 
 /* ปุ่มทรงแคปซูล — ภาษาภาพหลักของแบรนด์ */
 .btn {
-  background: var(--surface);
+  background: var(--raised);
+  color: var(--btn-ink);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-pill);
   padding: 8px 16px;
@@ -1123,7 +1248,7 @@ label {
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
 }
 .btn:hover:not(:disabled) {
-  background: var(--surface-2);
+  background: var(--raised-hover);
   border-color: var(--brand-line);
 }
 .btn:active:not(:disabled) {
@@ -1137,23 +1262,14 @@ label {
   /* ใช้เฉดเข้ม ไม่ใช่สีแบรนด์แท้ เพราะตัวหนังสือขาวต้องได้ 4.5:1 */
   background: var(--brand-strong);
   border-color: var(--brand-strong);
-  color: #fff;
+  color: var(--on-brand);
+  /* แสงสีแบรนด์ใต้ปุ่มเฉพาะโหมดมืด — ปุ่มหลักมีได้ปุ่มเดียวต่อหน้าจอ ให้เป็นจุดที่
+     "เปล่งแสง" จุดเดียวของหน้า ส่วนที่เหลือเงียบหมด (โหมดสว่างเป็น none) */
+  box-shadow: var(--btn-primary-fx);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--brand-deep);
   border-color: var(--brand-deep);
-}
-/* บั๊ก contrast เดิม: :not([data-theme='light']) ตรงกับสถานะ "system" ตอน OS
-   สว่างด้วย (ไม่มี data-theme เลย) ทำให้ตัวอักษรกลายเป็นสีเข้มบนพื้นสีน้ำเงิน
-   เดียวกับโหมดสว่าง เหลือ contrast แค่ ~3.1:1 อ่านไม่ออก ต้องผูกกับ data-theme
-   ที่เป็น 'dark' จริง ๆ เท่านั้น ให้ตรงเงื่อนไขเดียวกับตัวแปรสีด้านบน */
-:root[data-theme='dark'] .btn-primary {
-  color: #06202e;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .btn-primary {
-    color: #06202e;
-  }
 }
 .btn-sm {
   padding: 5px 13px;
@@ -1189,23 +1305,13 @@ label {
 .btn-danger {
   background: var(--bad);
   border-color: var(--bad);
-  color: #fff;
+  color: var(--on-bad);
 }
 .btn-danger:hover:not(:disabled) {
   background: var(--bad);
   background: color-mix(in srgb, var(--bad) 88%, #000);
   border-color: var(--bad);
   border-color: color-mix(in srgb, var(--bad) 88%, #000);
-}
-/* โหมดมืด --bad เป็นแดงอ่อน (#ef8078) ตัวหนังสือขาวบนสีนี้ได้แค่ ~2.6:1 ไม่ผ่านเกณฑ์
-   4.5:1 จึงสลับเป็นตัวหนังสือเข้ม (~7:1) — เงื่อนไขเดียวกับ .btn-primary ด้านบน */
-:root[data-theme='dark'] .btn-danger {
-  color: #2a0d0b;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .btn-danger {
-    color: #2a0d0b;
-  }
 }
 
 /* =========================================================== ตาราง */
@@ -1240,6 +1346,9 @@ thead th {
   position: sticky;
   top: 0;
   z-index: 1;
+  /* หัวตารางทึบและติดอยู่บนสุด จึงบังขอบบนสว่างของ .tablewrap (ที่มาจาก --shadow-sm)
+     ไว้พอดี ต้องวาดเส้นขอบบนให้หัวตารางเองอีกที ตารางจึงมีขอบบนเหมือนการ์ดอื่น */
+  box-shadow: var(--thead-edge);
 }
 tbody tr:last-child td {
   border-bottom: 0;
@@ -2086,7 +2195,7 @@ th[aria-sort] .arrow {
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 25, 38, 0.55);
+  background: var(--scrim);
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   display: flex;
@@ -2097,7 +2206,8 @@ th[aria-sort] .arrow {
   z-index: 100;
 }
 .dialog {
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--card-fx);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-lg);
   width: 100%;

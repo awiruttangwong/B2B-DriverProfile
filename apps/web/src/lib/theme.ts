@@ -40,3 +40,32 @@ export function applyTheme(t: Theme) {
 export function initTheme() {
   applyTheme(readTheme())
 }
+
+type WithViewTransition = Document & {
+  startViewTransition?: (cb: () => void) => unknown
+}
+
+/**
+ * สลับธีมแบบค่อย ๆ จางเปลี่ยนแทนการกระพริบเปลี่ยนทันที
+ *
+ * ใช้ View Transitions ของเบราว์เซอร์ ซึ่งถ่ายภาพหน้าจอก่อน-หลังแล้วครอสเฟดให้
+ * เป็นงานของ compositor ล้วน ๆ — ต่างจากการใส่ transition ให้ทุกอิลิเมนต์ (`* {}`)
+ * ที่ต้องคำนวณสีใหม่ทีละช่องทุกเฟรม ซึ่งจะหน่วงเห็นได้ชัดในหน้าที่เป็นตารางยาว ๆ
+ *
+ * เบราว์เซอร์ที่ไม่รองรับ (หรือผู้ใช้ตั้งค่าลดการเคลื่อนไหวไว้) จะเปลี่ยนทันทีแบบเดิม
+ * ไม่ใช่ไม่ทำงาน
+ */
+export function applyThemeAnimated(t: Theme) {
+  let reduced = false
+  try {
+    reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    /* ถามค่านี้ไม่ได้ก็ถือว่าผู้ใช้ไม่ได้ขอให้ลดการเคลื่อนไหว */
+  }
+  const doc = document as WithViewTransition
+  if (reduced || typeof doc.startViewTransition !== 'function') {
+    applyTheme(t)
+    return
+  }
+  doc.startViewTransition(() => applyTheme(t))
+}

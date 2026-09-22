@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { IconMoon, IconSun } from './icons'
-import { applyTheme, readTheme, saveTheme, systemPrefersDark, type Theme } from '../lib/theme'
+import {
+  applyTheme,
+  applyThemeAnimated,
+  readTheme,
+  saveTheme,
+  systemPrefersDark,
+  type Theme,
+} from '../lib/theme'
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(readTheme)
@@ -30,7 +37,12 @@ export default function ThemeToggle() {
             role="radio"
             aria-checked={on}
             className={on ? 'on' : ''}
-            onClick={() => setTheme(o.v)}
+            onClick={() => {
+              // เปลี่ยน data-theme เองตรงนี้เพื่อให้ครอบด้วยการจางเปลี่ยนได้
+              // effect ด้านบนจะเรียก applyTheme ซ้ำด้วยค่าเดิม ซึ่งไม่เปลี่ยนอะไรอีก
+              applyThemeAnimated(o.v)
+              setTheme(o.v)
+            }}
           >
             <Icon size={13} />
             {o.label}
