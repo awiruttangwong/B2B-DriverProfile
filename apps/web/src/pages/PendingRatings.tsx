@@ -221,7 +221,7 @@ export default function PendingRatings() {
         </p>
       )}
 
-      <div className="tablewrap">
+      <div className="tablewrap pending-table">
         <table>
           <thead>
             <tr>
