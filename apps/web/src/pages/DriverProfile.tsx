@@ -27,7 +27,7 @@ import {
   OUTCOME_LABEL,
   STATUS_LABEL,
 } from '../lib/format'
-import { IconArrowLeft, IconEdit, IconPhone, IconTruck } from '../components/icons'
+import { IconArrowLeft, IconCompanyTruck, IconEdit, IconPhone } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 import ContactDialog from '../components/ContactDialog'
 import DocumentSlot from '../components/DocumentSlot'
@@ -499,7 +499,7 @@ export default function DriverProfile() {
                                 title="รถบริษัท"
                                 aria-label="รถบริษัท"
                               >
-                                <IconTruck size={11} />
+                                <IconCompanyTruck size={12} />
                               </span>
                             )}
                           </div>
