@@ -55,7 +55,7 @@ export default function Blacklist() {
         <div>
           <h1>แบล็คลิสต์</h1>
           <p>
-            รายชื่อ พขร. ที่ถูกระงับการรับงาน(แบล็คลิสต์) เพราะมีปัญหา แยกจาก พขร. ที่ "พักงาน" —
+            รายชื่อ พขร. ที่ถูกระงับการรับงาน (แบล็คลิสต์) เพราะมีปัญหา แยกจาก พขร. ที่ "พักงาน" —
             จะไม่แสดงผลในหน้าหา พขร. เพื่อเข้ารับงานจนกว่าจะเปลี่ยนสถานะ
           </p>
         </div>
@@ -66,11 +66,11 @@ export default function Blacklist() {
           <thead>
             <tr>
               <th>พขร.</th>
-              <th>เบอร์โทร</th>
+              <th style={{ textAlign: 'center' }}>เบอร์โทร</th>
               <th>เหตุผล</th>
-              <th>ขึ้นบัญชีดำเมื่อ</th>
-              <th>ผู้สั่ง</th>
-              <th />
+              <th style={{ textAlign: 'center' }}>ขึ้นแบล็คลิสต์เมื่อ</th>
+              <th style={{ textAlign: 'center' }}>ผู้บันทึก</th>
+              <th>สถานะ</th>
             </tr>
           </thead>
           <tbody>
@@ -98,20 +98,26 @@ export default function Blacklist() {
                 const entry = latestByDriver.get(d.id)
                 return (
                   <tr key={d.id}>
-                    <td>
+                    <td className="nowrap">
                       <Link to={`/drivers/${d.id}`} style={{ fontWeight: 500 }}>
                         {d.full_name}
                       </Link>
                     </td>
-                    <td className="mono nowrap">{fmtPhone(d.phone)}</td>
-                    <td style={{ minWidth: 220, fontSize: 13 }}>{d.status_reason ?? '—'}</td>
-                    <td className="nowrap mono" style={{ fontSize: 12 }}>
+                    <td className="mono nowrap" style={{ textAlign: 'center' }}>
+                      {fmtPhone(d.phone)}
+                    </td>
+                    {/* เหตุผลยาวได้ไม่จำกัด ถ้าปล่อยให้คอลัมน์ขยายตามความยาวข้อความจะไปแย่งพื้นที่
+                        คอลัมน์ชื่อจนชื่อคนขึ้นบรรทัดใหม่ (เจอจริงกับ "ณัฐวัฒน์ สุดประเสริฐ")
+                        จำกัดความกว้างไว้ที่ maxWidth แทน แล้วให้ข้อความตัดขึ้นบรรทัดใหม่เอง
+                        (ต้องเห็นครบทุกตัวอักษร ไม่ตัดด้วย ... เหมือนที่ลองมาก่อนหน้านี้) */}
+                    <td style={{ maxWidth: 260, fontSize: 13 }}>{d.status_reason ?? '—'}</td>
+                    <td className="nowrap mono" style={{ fontSize: 12, textAlign: 'center' }}>
                       {entry ? fmtDateShort(entry.changed_at) : '—'}
                     </td>
-                    <td className="nowrap" style={{ fontSize: 13 }}>
+                    <td className="nowrap" style={{ fontSize: 13, textAlign: 'center' }}>
                       {entry?.changed_by_name ?? '—'}
                     </td>
-                    <td className="nowrap right">
+                    <td className="nowrap">
                       {can('admin', 'ops', 'hr') ? (
                         <button className="btn btn-sm" onClick={() => setStatusFor(d)}>
                           เปลี่ยนสถานะ
