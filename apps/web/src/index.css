@@ -714,9 +714,12 @@ input[type='password'] {
 }
 
 /*
- * ลิงก์ย้อนกลับ (เช่น "← รายชื่อ พขร." บนหน้าโปรไฟล์) — เดิมใช้แค่ตัวหนังสือสีเทา
+ * ปุ่มย้อนกลับ (เช่น "← ย้อนกลับ" บนหน้าโปรไฟล์) — เดิมใช้แค่ตัวหนังสือสีเทา
  * กับ "muted" ทำให้กลืนไปกับข้อความทั่วไป มองไม่ออกว่ากดได้ ปรับให้เป็นปุ่มเล็ก ๆ
  * มีกรอบพื้นหลังตอน hover เหมือน .nav a เพื่อให้เห็นชัดว่าเป็นปุ่มกดย้อนกลับ
+ *
+ * เป็น <button onClick={goBack}> ไม่ใช่ <Link> แล้ว (ย้อนประวัติจริงในแอปแทนที่จะ
+ * เด้งไปหน้ารายชื่อตายตัว) จึงต้องล้างสไตล์ปุ่มเริ่มต้นของเบราว์เซอร์ทิ้งเองด้วย
  */
 .back-link {
   display: inline-flex;
@@ -724,10 +727,13 @@ input[type='password'] {
   gap: 6px;
   margin-bottom: 14px;
   padding: 6px 10px 6px 8px;
+  border: none;
+  background: none;
   border-radius: var(--r);
   color: var(--muted);
   font-size: 13.5px;
   font-weight: 500;
+  cursor: pointer;
 }
 .back-link:hover {
   background: var(--surface-2);

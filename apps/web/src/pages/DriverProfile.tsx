@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -50,10 +50,24 @@ interface CriteriaAvg {
 export default function DriverProfile() {
   const { id = '' } = useParams()
   const { can, session } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [historyLimit, setHistoryLimit] = useState(25)
   const [statusOpen, setStatusOpen] = useState<{ initialNext?: DriverStatus } | null>(null)
   const [contactOpen, setContactOpen] = useState<{ existing?: DriverContact } | null>(null)
   const [showAllContacts, setShowAllContacts] = useState(false)
+
+  // เข้าหน้านี้ได้จากหลายที่ (รายชื่อ พขร., หา พขร., รอประเมิน, พักงาน, แบล็คลิสต์,
+  // บันทึกกิจกรรม, ช่องค้นหาแนะนำ) เดิมปุ่ม "กลับ" ฝัง Link to="/drivers" ตายตัว
+  // ไม่ว่าจะเข้ามาจากไหนก็เด้งไปหน้ารายชื่อเสมอ — คนที่มาจากหน้าอื่นกดกลับแล้วเจอ
+  // หน้าที่ไม่ใช่หน้าที่ตัวเองอยู่ก่อนหน้า ดูเหมือนระบบพาไปหน้าอื่นแบบสุ่ม จึงเปลี่ยน
+  // เป็นย้อนประวัติจริงในแอปแทน — location.key === 'default' คือเข้าหน้านี้มาโดยไม่มี
+  // ประวัติในแอปเลย (เปิดลิงก์ตรง ๆ /รีเฟรช/เปิดแท็บใหม่) ตอนนั้น navigate(-1) จะหลุด
+  // ออกจากแอปไปหน้าอื่นนอกระบบแทน จึง fallback ไปหน้ารายชื่อแทนในกรณีนั้นเท่านั้น
+  function goBack() {
+    if (location.key !== 'default') navigate(-1)
+    else navigate('/drivers')
+  }
 
   const contacts = useQuery({
     queryKey: ['driver', id, 'contacts'],
@@ -256,20 +270,20 @@ export default function DriverProfile() {
     return (
       <main className="page">
         <div className="note-box err">ไม่พบ พขร. รายนี้</div>
-        <Link to="/drivers" className="back-link" style={{ marginTop: 14 }}>
+        <button type="button" className="back-link" style={{ marginTop: 14 }} onClick={goBack}>
           <IconArrowLeft size={15} />
-          กลับไปรายชื่อ
-        </Link>
+          ย้อนกลับ
+        </button>
       </main>
     )
   }
 
   return (
     <main className="page">
-      <Link to="/drivers" className="back-link">
+      <button type="button" className="back-link" onClick={goBack}>
         <IconArrowLeft size={15} />
-        รายชื่อ พขร.
-      </Link>
+        ย้อนกลับ
+      </button>
 
       {/* ------------------------------------------------ หัวโปรไฟล์ */}
       <div className="card" style={{ marginBottom: 18 }}>
