@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow, DriverStatusLogRow } from '../types/database'
 import { fmtDateShort, fmtNum, fmtPhone, suspensionRemainingLabel } from '../lib/format'
 import StatusDialog from '../components/StatusDialog'
+import SkeletonRows from '../components/SkeletonRows'
 import { IconPause } from '../components/icons'
 
 /** เฉพาะคอลัมน์ที่หน้านี้ใช้จริงจาก driver_status_log — ไม่ได้ดึงทั้งแถว (เหตุผลเดียวกับ
@@ -29,7 +30,7 @@ export default function Suspended() {
     },
   })
 
-  // "ขึ้นพักงานเมื่อไร ใครบันทึก" ไม่ได้อยู่ใน driver_directory (มีแค่สถานะปัจจุบัน) ต้องแยก
+  // "เริ่มพักงานเมื่อไร ใครบันทึก" ไม่ได้อยู่ใน driver_directory (มีแค่สถานะปัจจุบัน) ต้องแยก
   // ไปดูประวัติ — เอาแค่ครั้งล่าสุดที่ "เพิ่งเข้าสู่" สถานะพักงาน (from_status ≠ inactive) ต่อคน
   // ไม่ใช่ครั้งล่าสุดที่แตะสถานะนี้เฉย ๆ เพราะฟีเจอร์ปรับ/ต่อ/ย่นระยะเวลา (30/60/90 วัน) ทำให้
   // เกิดรายการ "พักงาน → พักงาน" (แค่เปลี่ยนกำหนดเวลา) แทรกอยู่ได้ ถ้านับรวมด้วย คอลัมน์นี้จะ
@@ -80,7 +81,7 @@ export default function Suspended() {
               <th>พขร.</th>
               <th style={{ textAlign: 'center' }}>เบอร์โทร</th>
               <th>เหตุผล</th>
-              <th style={{ textAlign: 'center' }}>ขึ้นพักงานเมื่อ</th>
+              <th style={{ textAlign: 'center' }}>เริ่มพักงานเมื่อ</th>
               <th style={{ textAlign: 'center' }}>กำหนดพักงาน</th>
               <th style={{ textAlign: 'center' }}>ผู้บันทึก</th>
               <th className="col-action" style={{ textAlign: 'center' }}>
@@ -90,11 +91,18 @@ export default function Suspended() {
           </thead>
           <tbody>
             {isLoading && (
-              <tr>
-                <td colSpan={7} className="empty">
-                  <span className="spinner" /> กำลังโหลด…
-                </td>
-              </tr>
+              <SkeletonRows
+                rows={5}
+                columns={[
+                  { width: '65%' }, // พขร.
+                  { width: '55%', align: 'center' }, // เบอร์โทร
+                  { width: '75%' }, // เหตุผล
+                  { width: '50%', align: 'center' }, // เริ่มพักงานเมื่อ
+                  { width: '55%', align: 'center' }, // กำหนดพักงาน
+                  { width: '50%', align: 'center' }, // ผู้บันทึก
+                  { width: '50%', align: 'center' }, // สถานะ
+                ]}
+              />
             )}
             {!isLoading && rows.length === 0 && (
               <tr>

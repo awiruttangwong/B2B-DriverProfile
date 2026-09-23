@@ -8,6 +8,7 @@ import { fmtDateShort, fmtNum, fmtPhone, fmtScore, safeSearchTerm } from '../lib
 import { JOB_RANGE_OPTIONS } from '../lib/jobRanges'
 import ClearableSelect from '../components/ClearableSelect'
 import RatingDialog from '../components/RatingDialog'
+import SkeletonRows from '../components/SkeletonRows'
 
 const PAGE = 40
 
@@ -236,11 +237,16 @@ export default function PendingRatings() {
           </thead>
           <tbody>
             {isLoading && (
-              <tr>
-                <td colSpan={5} className="empty">
-                  <span className="spinner" /> กำลังโหลด…
-                </td>
-              </tr>
+              <SkeletonRows
+                rows={6}
+                columns={[
+                  { width: '65%' }, // พขร.
+                  { width: '55%' }, // เบอร์โทร (ไม่กึ่งกลาง ต่างจากตารางอื่น)
+                  { width: '50%', align: 'center' }, // เที่ยววิ่งสะสม
+                  { width: '50%', align: 'center' }, // งานล่าสุด
+                  { width: '50%', align: 'center' }, // สถานะ
+                ]}
+              />
             )}
             {!isLoading && (data?.rows.length ?? 0) === 0 && (
               <tr>

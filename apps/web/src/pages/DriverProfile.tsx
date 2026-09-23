@@ -33,6 +33,8 @@ import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 import ContactDialog from '../components/ContactDialog'
 import DocumentSlot from '../components/DocumentSlot'
 import ExtraPhones from '../components/ExtraPhones'
+import SkeletonRows from '../components/SkeletonRows'
+import SkeletonListItems from '../components/SkeletonListItems'
 
 /** จำนวนรายการโทรที่แสดงก่อนกด "ดูทั้งหมด" — ส่วนใหญ่คนถัดไปสนใจแค่ไม่กี่ครั้งล่าสุด */
 const CONTACTS_PREVIEW = 5
@@ -462,11 +464,10 @@ export default function DriverProfile() {
                 </thead>
                 <tbody>
                   {history.isLoading && (
-                    <tr>
-                      <td colSpan={4} className="empty">
-                        <span className="spinner" /> กำลังโหลด…
-                      </td>
-                    </tr>
+                    <SkeletonRows
+                      rows={6}
+                      columns={[{ width: '55%' }, { width: '40%' }, { width: '80%' }, { width: '45%' }]}
+                    />
                   )}
                   {!history.isLoading && (history.data?.length ?? 0) === 0 && (
                     <tr>
@@ -638,9 +639,7 @@ export default function DriverProfile() {
           </div>
 
           {contacts.isLoading ? (
-            <div className="empty">
-              <span className="spinner" /> กำลังโหลด…
-            </div>
+            <SkeletonListItems />
           ) : contacts.error ? (
             <div className="card-pad">
               <div className="note-box err">

@@ -1369,18 +1369,15 @@ th.right {
 .drivers-table td .row {
   justify-content: center;
 }
-.drivers-table td .sk {
-  margin-left: auto;
-  margin-right: auto;
-}
 /* ยกเว้นคอลัมน์ชื่อ พขร. — ชิดซ้ายอ่านง่ายกว่า เป็นคอลัมน์ระบุตัวตน ไม่ใช่ค่าตัวเลข */
 .drivers-table th:first-child,
 .drivers-table td:first-child {
   text-align: left;
 }
-.drivers-table td:first-child .sk {
-  margin-left: 0;
-}
+/* การจัดตำแหน่งแท่งโครงร่างระหว่างโหลด (.sk) ทำที่ SkeletonRows.tsx โดยตรงต่อคอลัมน์แล้ว
+   (align: 'left' | 'center' ต่อคอลัมน์) ไม่ต้องมีกฎ margin auto แบบเหมารวมทั้งตารางที่นี่
+   อีกต่อไป — กฎเดิมเคยจัดกึ่งกลางแท่งโครงร่างของคอลัมน์คะแนนผิด (คอลัมน์นั้นชิดซ้ายจริง
+   ตาม .col-score) เพราะ CSS มองไม่เห็นว่าคอลัมน์ไหนเป็นข้อยกเว้น */
 td.nowrap,
 .nowrap {
   white-space: nowrap;

@@ -17,6 +17,7 @@ import ScoreCell from '../components/ScoreCell'
 import ReadinessPanel from '../components/ReadinessPanel'
 import StatusDialog from '../components/StatusDialog'
 import Combobox from '../components/Combobox'
+import SkeletonRows from '../components/SkeletonRows'
 import { IconSearch, IconUsers } from '../components/icons'
 
 const STATUS_OPTIONS = [
@@ -395,16 +396,19 @@ export default function Drivers() {
             </tr>
           </thead>
           <tbody>
-            {isLoading &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i}>
-                  {Array.from({ length: 6 }).map((__, j) => (
-                    <td key={j}>
-                      <div className="sk" style={{ width: j === 0 ? '70%' : '50%' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
+            {isLoading && (
+              <SkeletonRows
+                rows={8}
+                columns={[
+                  { width: '70%' }, // พขร. — ชิดซ้าย คอลัมน์เดียวที่ไม่กึ่งกลาง
+                  { width: '50%', align: 'center' }, // เบอร์โทร
+                  { width: '50%', align: 'center' }, // เที่ยววิ่งสะสม
+                  { width: '50%' }, // คะแนนประเมิน (.col-score ชิดซ้ายเหมือนกัน — ดู index.css)
+                  { width: '50%', align: 'center' }, // งานล่าสุด
+                  { width: '50%', align: 'center' }, // สถานะ
+                ]}
+              />
+            )}
 
             {!isLoading && rows.length === 0 && (
               <tr>

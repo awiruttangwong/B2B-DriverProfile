@@ -15,6 +15,7 @@ import {
   roleLabel,
 } from '../lib/format'
 import ClearableSelect from '../components/ClearableSelect'
+import SkeletonRows from '../components/SkeletonRows'
 import { IconClock } from '../components/icons'
 
 const PAGE_SIZE = 40
@@ -233,16 +234,18 @@ export default function ActivityLog() {
             </tr>
           </thead>
           <tbody>
-            {isLoading &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i}>
-                  {Array.from({ length: 5 }).map((__, j) => (
-                    <td key={j}>
-                      <div className="sk" style={{ width: j === 0 ? '70%' : '50%' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
+            {isLoading && (
+              <SkeletonRows
+                rows={8}
+                columns={[
+                  { width: '55%' }, // เวลา
+                  { width: '70%' }, // ผู้ทำรายการ
+                  { width: '45%' }, // ประเภทกิจกรรม
+                  { width: '55%' }, // รายการที่เกี่ยวข้อง
+                  { width: '80%' }, // รายละเอียด
+                ]}
+              />
+            )}
 
             {!isLoading && rows.length === 0 && (
               <tr>

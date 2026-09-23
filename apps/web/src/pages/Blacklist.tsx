@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow, DriverStatusLogRow } from '../types/database'
 import { fmtDateShort, fmtNum, fmtPhone } from '../lib/format'
 import StatusDialog from '../components/StatusDialog'
+import SkeletonRows from '../components/SkeletonRows'
 import { IconBan } from '../components/icons'
 
 /** เฉพาะคอลัมน์ที่หน้านี้ใช้จริงจาก driver_status_log — ไม่ได้ดึงทั้งแถว */
@@ -88,11 +89,17 @@ export default function Blacklist() {
           </thead>
           <tbody>
             {isLoading && (
-              <tr>
-                <td colSpan={6} className="empty">
-                  <span className="spinner" /> กำลังโหลด…
-                </td>
-              </tr>
+              <SkeletonRows
+                rows={5}
+                columns={[
+                  { width: '65%' }, // พขร.
+                  { width: '55%', align: 'center' }, // เบอร์โทร
+                  { width: '75%' }, // เหตุผล
+                  { width: '50%', align: 'center' }, // ขึ้นแบล็คลิสต์เมื่อ
+                  { width: '50%', align: 'center' }, // ผู้บันทึก
+                  { width: '50%', align: 'center' }, // สถานะ
+                ]}
+              />
             )}
             {!isLoading && rows.length === 0 && (
               <tr>
