@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Customer, DriverFitRow, VehicleType } from '../types/database'
@@ -142,14 +142,20 @@ function RouteField({
 }
 
 export default function FindDriver() {
-  const [customer, setCustomer] = useState('')
-  const [vehicleType, setVehicleType] = useState('')
-  const [route, setRoute] = useState('')
-  const [routeStrict, setRouteStrict] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // อ่านจาก URL ครั้งเดียวตอนเมาท์ แล้วเขียนกลับออกไปทางเดียวผูกกับ "submitted" (สิ่งที่
+  // กด "ค้นหา" ไปแล้วจริง) ไม่ผูกทุกครั้งที่พิมพ์ในช่องกรอก — หน้านี้มีปุ่มค้นหาชัดเจน
+  // (ต่างจากหน้ารายชื่อ พขร. ที่กรองสดตามตัวพิมพ์) และลิงก์เข้าโปรไฟล์มีแค่ในตารางผล
+  // ลัพธ์ซึ่งโผล่ได้ก็ต่อเมื่อ submitted ไม่ใช่ null เท่านั้น จึงพอกดย้อนกลับจากโปรไฟล์
+  // มาแล้วเห็นทั้งฟอร์มและผลลัพธ์ชุดเดิมเป๊ะ ๆ (ดู effect หลังประกาศ limit ด้านล่าง)
+  const [customer, setCustomer] = useState(() => searchParams.get('cu') ?? '')
+  const [vehicleType, setVehicleType] = useState(() => searchParams.get('vt') ?? '')
+  const [route, setRoute] = useState(() => searchParams.get('rt') ?? '')
+  const [routeStrict, setRouteStrict] = useState(() => searchParams.get('rs') === '1')
   // ลูกค้ากับประเภทรถกรองเข้มอยู่แล้วเป็นค่าเริ่มต้น (ต่างจากเส้นทาง) — ติ๊กออกคือเปลี่ยน
   // เป็นแค่จัดลำดับ
-  const [customerStrict, setCustomerStrict] = useState(true)
-  const [vehicleTypeStrict, setVehicleTypeStrict] = useState(true)
+  const [customerStrict, setCustomerStrict] = useState(() => searchParams.get('cs') !== '0')
+  const [vehicleTypeStrict, setVehicleTypeStrict] = useState(() => searchParams.get('vs') !== '0')
   const [submitted, setSubmitted] = useState<{
     customer: string
     vehicleType: string
@@ -157,7 +163,17 @@ export default function FindDriver() {
     routeStrict: boolean
     customerStrict: boolean
     vehicleTypeStrict: boolean
-  } | null>(null)
+  } | null>(() => {
+    if (searchParams.get('sub') !== '1') return null
+    return {
+      customer: searchParams.get('cu') ?? '',
+      vehicleType: searchParams.get('vt') ?? '',
+      route: searchParams.get('rt') ?? '',
+      routeStrict: searchParams.get('rs') === '1',
+      customerStrict: searchParams.get('cs') !== '0',
+      vehicleTypeStrict: searchParams.get('vs') !== '0',
+    }
+  })
 
   // ล้างช่องแล้วสวิตช์ของช่องนั้นต้องกลับเป็นค่าเริ่มต้นด้วย — สวิตช์ซ่อนอยู่ตอนช่องว่าง
   // ถ้าปล่อยค้างเป็นปิดไว้ มันยังแอบกำหนดการแคบตัวเลือกของอีกช่องอยู่โดยผู้ใช้มองไม่เห็น
@@ -308,7 +324,39 @@ export default function FindDriver() {
   // เป็นค่าเริ่มต้น (ปิดติ๊กแล้วเป็นแค่จัดลำดับ) ส่วนเส้นทาง (พิมพ์อิสระ) เริ่มที่จัดลำดับ
   // อย่างเดียว (เปิดติ๊กแล้วกรองเข้ม) จำนวนที่เหลือให้โหลดเพิ่มจึงอาจน้อยกว่าจำนวนคนขับ
   // ที่ผ่านสถานะทั้งระบบมาก
-  const [limit, setLimit] = useState(25)
+  const [limit, setLimit] = useState(() => {
+    const n = Number(searchParams.get('lim'))
+    return Number.isFinite(n) && n > 25 ? n : 25
+  })
+
+  // เขียน submitted + limit ออกไปที่ URL ทางเดียว (replace ไม่ใช่ push — กด "โหลดเพิ่ม"
+  // สิบครั้งไม่ควรสร้าง 10 history entry) ไม่แตะฟิลด์ฟอร์มที่พิมพ์ค้างไว้แต่ยังไม่กด
+  // ค้นหา เพราะนั่นไม่ใช่สิ่งที่ผลลัพธ์บนตารางกำลังแสดงอยู่จริง
+  useEffect(() => {
+    setSearchParams(
+      (sp) => {
+        const next = new URLSearchParams(sp)
+        if (!submitted) {
+          for (const k of ['cu', 'vt', 'rt', 'cs', 'vs', 'rs', 'lim', 'sub']) next.delete(k)
+          return next
+        }
+        const setOrDelete = (k: string, v: string, isDefault: boolean) => {
+          if (isDefault) next.delete(k)
+          else next.set(k, v)
+        }
+        next.set('sub', '1')
+        setOrDelete('cu', submitted.customer, !submitted.customer)
+        setOrDelete('vt', submitted.vehicleType, !submitted.vehicleType)
+        setOrDelete('rt', submitted.route, !submitted.route)
+        setOrDelete('cs', '0', submitted.customerStrict)
+        setOrDelete('vs', '0', submitted.vehicleTypeStrict)
+        setOrDelete('rs', '1', !submitted.routeStrict)
+        setOrDelete('lim', String(limit), limit === 25)
+        return next
+      },
+      { replace: true },
+    )
+  }, [submitted, limit, setSearchParams])
 
   const results = useQuery({
     queryKey: ['fit', submitted, limit],

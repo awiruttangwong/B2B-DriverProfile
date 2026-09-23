@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { ActivityLogRow } from '../types/database'
@@ -129,14 +129,55 @@ function Detail({ row }: { row: ActivityLogRow }) {
   return <span className="muted">—</span>
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default function ActivityLog() {
-  const [actorId, setActorId] = useState('')
-  const [action, setAction] = useState('')
-  const [page, setPage] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // อ่านจาก URL ครั้งเดียวตอนเมาท์ แล้วเขียนกลับออกไปทางเดียวใน effect ด้านล่าง (เหตุผล
+  // เดียวกับหน้ารายชื่อ พขร./รอประเมิน) — กดย้อนกลับจากโปรไฟล์ พขร. ที่ลิงก์ไปจากคอลัมน์
+  // "รายการที่เกี่ยวข้อง" จึงเห็นตัวกรอง+หน้าเดิม ไม่รีเซ็ตเป็นค่าเริ่มต้น
+  const [actorId, setActorId] = useState(() => {
+    const v = searchParams.get('actor') ?? ''
+    return UUID_RE.test(v) ? v : ''
+  })
+  const [action, setAction] = useState(() => {
+    const v = searchParams.get('action') ?? ''
+    return v in ACTION_LABEL ? v : ''
+  })
+  const [page, setPage] = useState(() => {
+    const p = Number(searchParams.get('page'))
+    return Number.isFinite(p) && p > 0 ? p - 1 : 0
+  })
+
+  // รีเซ็ตหน้าเฉพาะตอนตัวกรอง "เปลี่ยนจริง" เท่านั้น เทียบกับค่าที่จำไว้ล่าสุดแทนการใช้
+  // flag "เมาท์ครั้งแรกหรือยัง" ตรง ๆ — เพราะ React StrictMode ตอนพัฒนายิง effect ซ้ำสอง
+  // รอบตอนเมาท์ ถ้าใช้ flag ตัวเดียวรอบที่สองจะหลุดผ่านเงื่อนไขไปรีเซ็ตหน้าที่เพิ่งกู้คืน
+  // มาจาก URL (เช่น page=3 ตอนกดย้อนกลับ) ทันที ทั้งที่ไม่มีอะไรเปลี่ยนจริง (ดูคอมเมนต์
+  // เต็มแบบเดียวกันใน Drivers.tsx)
+  const prevFilters = useRef({ actorId, action })
+  useEffect(() => {
+    const prev = prevFilters.current
+    const changed = prev.actorId !== actorId || prev.action !== action
+    prevFilters.current = { actorId, action }
+    if (changed) setPage(0)
+  }, [actorId, action])
 
   useEffect(() => {
-    setPage(0)
-  }, [actorId, action])
+    setSearchParams(
+      (sp) => {
+        const next = new URLSearchParams(sp)
+        const setOrDelete = (k: string, v: string, isDefault: boolean) => {
+          if (isDefault) next.delete(k)
+          else next.set(k, v)
+        }
+        setOrDelete('actor', actorId, !actorId)
+        setOrDelete('action', action, !action)
+        setOrDelete('page', String(page + 1), page === 0)
+        return next
+      },
+      { replace: true },
+    )
+  }, [actorId, action, page, setSearchParams])
 
   const actors = useQuery({
     queryKey: ['activity-actors'],

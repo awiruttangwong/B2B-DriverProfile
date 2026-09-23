@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -50,15 +50,46 @@ const DAY_OPTIONS = [
 
 export default function PendingRatings() {
   const { can } = useAuth()
-  const [page, setPage] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // อ่านจาก URL ครั้งเดียวตอนเมาท์ แล้วเขียนกลับออกไปทางเดียวใน effect ท้ายบล็อกนี้
+  // (เหตุผลเดียวกับหน้ารายชื่อ พขร.) กดย้อนกลับจากโปรไฟล์คนที่กดประเมิน/กดจากผลค้นหา
+  // จึงเห็นตัวกรอง+หน้าเดิม แทนที่จะรีเซ็ตเป็นค่าเริ่มต้นทุกครั้ง
+  const [page, setPage] = useState(() => {
+    const p = Number(searchParams.get('page'))
+    return Number.isFinite(p) && p > 0 ? p - 1 : 0
+  })
   const [target, setTarget] = useState<TargetDriver | null>(null)
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => searchParams.get('q') ?? '')
 
   // ค่าเริ่มต้น = ไม่จำกัด (ตรงกับตัวเลขบนเมนูและหน้ารายชื่อ พขร. ซึ่งนับจากสถานะ
   // active/probation ล้วน ๆ แล้ว) ไม่ผูกกับจำนวนเที่ยวเลย เพราะคนที่เพิ่งเริ่มวิ่ง
   // แล้วยังไม่มีใครรู้ฝีมือควรถูกเห็นตั้งแต่แรกเหมือนกับคนที่วิ่งมานาน
-  const [jobRange, setJobRange] = useState('')
-  const [maxDays, setMaxDays] = useState('')
+  const [jobRange, setJobRange] = useState(() => {
+    const v = searchParams.get('jobs') ?? ''
+    return JOB_RANGE_OPTIONS.some((o) => o.value === v) ? v : ''
+  })
+  const [maxDays, setMaxDays] = useState(() => {
+    const v = searchParams.get('days') ?? ''
+    return DAY_OPTIONS.some((o) => o.value === v) ? v : ''
+  })
+
+  useEffect(() => {
+    setSearchParams(
+      (sp) => {
+        const next = new URLSearchParams(sp)
+        const setOrDelete = (k: string, v: string, isDefault: boolean) => {
+          if (isDefault) next.delete(k)
+          else next.set(k, v)
+        }
+        setOrDelete('q', q, !q)
+        setOrDelete('jobs', jobRange, !jobRange)
+        setOrDelete('days', maxDays, !maxDays)
+        setOrDelete('page', String(page + 1), page === 0)
+        return next
+      },
+      { replace: true },
+    )
+  }, [q, jobRange, maxDays, page, setSearchParams])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['pending', page, jobRange, maxDays],

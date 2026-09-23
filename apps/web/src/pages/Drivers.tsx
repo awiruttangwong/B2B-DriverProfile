@@ -29,6 +29,7 @@ const STATUS_OPTIONS = [
 ]
 
 type SortKey = 'total_jobs' | 'adjusted_score' | 'last_job_date' | 'full_name'
+const SORT_KEYS: SortKey[] = ['total_jobs', 'adjusted_score', 'last_job_date', 'full_name']
 
 const PAGE_SIZE = 50
 
@@ -170,16 +171,34 @@ function useDebounced<T>(value: T, ms = 300): T {
 export default function Drivers() {
   const { can } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  // เข้ามาจากแท็บ "ควรปรับสถานะ" — เจาะจงหาคน active ที่เงียบหายเกิน 90 วัน
-  // ต้องเป็นค่าเริ่มต้นตอนโหลดหน้าเท่านั้น (ไม่ผูกกับ searchParams ต่อ) เพราะ
-  // ผู้ใช้ต้องปรับตัวกรองอื่นต่อได้เองโดยไม่ถูกดึงกลับไปที่ค่าจาก URL ทุกครั้ง
+  // อ่านค่าเริ่มต้นจาก URL ครั้งเดียวตอนโหลดหน้า (ไม่มี effect ไหนอ่านย้อนกลับจาก URL
+  // อีกหลังจากนี้) เพราะผู้ใช้ต้องปรับตัวกรองต่อได้เองโดยไม่ถูกดึงกลับไปค่าจาก URL ทุกครั้ง
+  // — ตัวกรองทั้งหมดเขียนออกไปที่ URL ทางเดียวด้านล่าง (ดู effect ท้ายบล็อกนี้) เพื่อให้กด
+  // ย้อนกลับจากหน้าโปรไฟล์ (หรือหน้าอื่นที่ลิงก์มา) แล้วเห็นตัวกรอง/การเรียง/เลขหน้าเดิม
+  // เป๊ะ ๆ แทนที่จะรีเซ็ตเป็นค่าเริ่มต้นทุกครั้ง (เดิมมีแค่ "stale" ที่ทำแบบนี้)
   const [staleOnly, setStaleOnly] = useState(() => searchParams.get('stale') === '1')
-  const [q, setQ] = useState('')
-  const [status, setStatus] = useState('active')
-  const [jobRange, setJobRange] = useState('')
-  const [sort, setSort] = useState<SortKey>(() => (staleOnly ? 'last_job_date' : 'total_jobs'))
-  const [asc, setAsc] = useState(() => staleOnly)
-  const [page, setPage] = useState(0)
+  const [q, setQ] = useState(() => searchParams.get('q') ?? '')
+  const [status, setStatus] = useState(() => {
+    const v = searchParams.get('status')
+    return v !== null && STATUS_OPTIONS.some((o) => o.value === v) ? v : 'active'
+  })
+  const [jobRange, setJobRange] = useState(() => {
+    const v = searchParams.get('jobs') ?? ''
+    return JOB_RANGE_OPTIONS.some((o) => o.value === v) ? v : ''
+  })
+  const [sort, setSort] = useState<SortKey>(() => {
+    const v = searchParams.get('sort') as SortKey | null
+    if (v && SORT_KEYS.includes(v)) return v
+    return staleOnly ? 'last_job_date' : 'total_jobs'
+  })
+  const [asc, setAsc] = useState(() => {
+    const v = searchParams.get('asc')
+    return v !== null ? v === '1' : staleOnly
+  })
+  const [page, setPage] = useState(() => {
+    const p = Number(searchParams.get('page'))
+    return Number.isFinite(p) && p > 0 ? p - 1 : 0
+  })
   const [statusFor, setStatusFor] = useState<DriverDirectoryRow | null>(null)
 
   const dq = useDebounced(q)
@@ -188,18 +207,53 @@ export default function Drivers() {
     setStaleOnly(false)
     setSort('total_jobs')
     setAsc(false)
+  }
+
+  // รีเซ็ตหน้าเฉพาะตอนตัวกรอง "เปลี่ยนจริง" เท่านั้น เทียบกับค่าที่จำไว้ล่าสุดแทนการใช้
+  // flag "เมาท์ครั้งแรกหรือยัง" ตรง ๆ — เพราะ React StrictMode ตอนพัฒนายิง effect ซ้ำ
+  // สองรอบตอนเมาท์ (mount -> cleanup -> mount) ถ้าใช้ flag ตัวเดียวที่ถูกสลับเป็น "เจอ
+  // แล้ว" ตั้งแต่รอบแรก รอบที่สองซึ่งจำลองเมาท์ใหม่จะหลุดผ่านเงื่อนไขไปรีเซ็ตหน้าที่เพิ่ง
+  // กู้คืนมาจาก URL (เช่น page=3 ตอนกดย้อนกลับ) ทันที ทั้งที่ผู้ใช้ไม่ได้เปลี่ยนอะไรเลย —
+  // เทียบค่าแทนปลอดภัยไม่ว่า effect จะถูกยิงซ้ำกี่รอบ เพราะรีเซ็ตเฉพาะตอนค่าต่างจริง ๆ
+  const prevFilters = useRef({ dq, status, jobRange, sort, asc, staleOnly })
+  useEffect(() => {
+    const prev = prevFilters.current
+    const changed =
+      prev.dq !== dq ||
+      prev.status !== status ||
+      prev.jobRange !== jobRange ||
+      prev.sort !== sort ||
+      prev.asc !== asc ||
+      prev.staleOnly !== staleOnly
+    prevFilters.current = { dq, status, jobRange, sort, asc, staleOnly }
+    if (changed) setPage(0)
+  }, [dq, status, jobRange, sort, asc, staleOnly])
+
+  // ผูกตัวกรองทั้งหมดไว้กับ URL ทางเดียว (state -> URL เท่านั้น ไม่มีทางย้อนกลับ) ใช้
+  // replace ไม่ใช่ push ทุกครั้ง ไม่งั้นพิมพ์คำค้นหนึ่งคำจะสร้าง history entry ใหม่ทุกตัวอักษร
+  // กดย้อนกลับทีเดียวจะไม่ไปไหนเพราะติดอยู่ในประวัติการพิมพ์ของตัวเอง — ตัดค่าที่เป็นค่า
+  // เริ่มต้นออกจาก URL ด้วย ไม่ให้ลิงก์รกเป็น /drivers?q=&status=active&jobs=&sort=... ทุกครั้ง
+  useEffect(() => {
     setSearchParams(
       (sp) => {
-        sp.delete('stale')
-        return sp
+        const next = new URLSearchParams(sp)
+        const setOrDelete = (k: string, v: string, isDefault: boolean) => {
+          if (isDefault) next.delete(k)
+          else next.set(k, v)
+        }
+        setOrDelete('stale', '1', !staleOnly)
+        setOrDelete('q', q, !q)
+        setOrDelete('status', status, status === 'active')
+        setOrDelete('jobs', jobRange, !jobRange)
+        const defaultSort = staleOnly ? 'last_job_date' : 'total_jobs'
+        setOrDelete('sort', sort, sort === defaultSort)
+        setOrDelete('asc', asc ? '1' : '0', asc === staleOnly)
+        setOrDelete('page', String(page + 1), page === 0)
+        return next
       },
       { replace: true },
     )
-  }
-
-  useEffect(() => {
-    setPage(0)
-  }, [dq, status, jobRange, sort, asc, staleOnly])
+  }, [staleOnly, q, status, jobRange, sort, asc, page, setSearchParams])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['drivers', dq, status, jobRange, sort, asc, page, staleOnly],
