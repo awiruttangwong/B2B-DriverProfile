@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -7,6 +7,7 @@ import type { DriverDirectoryRow, DriverStatusLogRow } from '../types/database'
 import { fmtDateShort, fmtNum, fmtPhone } from '../lib/format'
 import StatusDialog from '../components/StatusDialog'
 import SkeletonRows from '../components/SkeletonRows'
+import SearchField from '../components/SearchField'
 import { IconBan } from '../components/icons'
 
 /** เฉพาะคอลัมน์ที่หน้านี้ใช้จริงจาก driver_status_log — ไม่ได้ดึงทั้งแถว */
@@ -14,7 +15,25 @@ type BlacklistLogRow = Pick<DriverStatusLogRow, 'driver_id' | 'changed_at' | 'ch
 
 export default function Blacklist() {
   const { can } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [statusFor, setStatusFor] = useState<DriverDirectoryRow | null>(null)
+  // อ่านจาก URL ครั้งเดียวตอนเมาท์ แล้วเขียนกลับออกไปทางเดียว — เหตุผลเดียวกับหน้าพักงาน/
+  // รายชื่อ พขร. อื่น ๆ: กดย้อนกลับจากโปรไฟล์ พขร. ที่ลิงก์ออกไปจากตารางนี้แล้วต้องเห็น
+  // คำค้นหาเดิม ไม่รีเซ็ตเป็นค่าว่าง กรองฝั่งเครื่องล้วน ๆ ไม่ยิง query ใหม่ (จำนวนคนใน
+  // แบล็คลิสต์เป็นตัวเลขเล็กเสมอ ดึงมาหมดแล้วอยู่แล้ว — ดูคอมเมนต์คิวรี drivers ด้านล่าง)
+  const [q, setQ] = useState(() => searchParams.get('q') ?? '')
+
+  useEffect(() => {
+    setSearchParams(
+      (sp) => {
+        const next = new URLSearchParams(sp)
+        if (q) next.set('q', q)
+        else next.delete('q')
+        return next
+      },
+      { replace: true },
+    )
+  }, [q, setSearchParams])
 
   const drivers = useQuery({
     queryKey: ['blacklist', 'drivers'],
@@ -61,6 +80,13 @@ export default function Blacklist() {
   const isLoading = drivers.isLoading || log.isLoading
   const rows = drivers.data ?? []
 
+  // กรองฝั่งเครื่อง จับแค่ชื่อ/เบอร์โทร ไม่รวมเหตุผล (เหตุผลเดียวกับหน้าพักงาน — ดูคอมเมนต์
+  // เต็มใน Suspended.tsx)
+  const term = q.trim().toLowerCase()
+  const filteredRows = term
+    ? rows.filter((d) => `${d.full_name} ${d.phone ?? ''}`.toLowerCase().includes(term))
+    : rows
+
   return (
     <main className="page">
       <div className="page-head">
@@ -70,6 +96,20 @@ export default function Blacklist() {
             รายชื่อ พขร. ที่ถูกระงับการรับงาน (แบล็คลิสต์) เพราะมีปัญหา แยกจาก พขร. ที่ "พักงาน" —
             จะไม่แสดงผลในหน้าหา พขร. เพื่อเข้ารับงานจนกว่าจะเปลี่ยนสถานะ
           </p>
+        </div>
+      </div>
+
+      {/* แสดงการ์ดตัวกรองตลอด ไม่ผูกกับว่ามีข้อมูลอยู่ก่อนหรือไม่ — เหมือนหน้าอื่นที่มีตัวกรอง
+          ทั้งหมดในระบบ (รายชื่อ พขร./รอประเมิน/บันทึกกิจกรรม/พักงาน) ที่โชว์ตัวกรองค้างไว้
+          เสมอแล้วให้ empty-state ในตารางจัดการกรณี "ไม่มีอะไรให้ดู" เอง — ห่อด้วย .filters-row
+          เหมือนทุกหน้า แม้จะมีแค่ช่องเดียว เพื่อให้ได้พฤติกรรมจอแคบ/ระยะห่างชุดเดียวกัน (ดู
+          คอมเมนต์ .filters-row ใน index.css — เคยมีบั๊กจริงตอนไม่ได้ห่อแบบนี้) */}
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div className="filters-row">
+          <div style={{ flex: '1 1 320px' }}>
+            <label htmlFor="q">ค้นหา</label>
+            <SearchField id="q" value={q} onChange={setQ} placeholder="ชื่อ พขร. / เบอร์โทร" />
+          </div>
         </div>
       </div>
 
@@ -113,8 +153,25 @@ export default function Blacklist() {
                 </td>
               </tr>
             )}
+            {!isLoading && rows.length > 0 && filteredRows.length === 0 && (
+              <tr>
+                <td colSpan={6}>
+                  <div className="empty">
+                    <span className="e-icon">
+                      <IconBan size={22} />
+                    </span>
+                    <b>ไม่พบคนที่ตรงกับคำค้นหา</b>
+                    <div style={{ marginTop: 12 }}>
+                      <button className="btn btn-sm" onClick={() => setQ('')}>
+                        ล้างคำค้นหา
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            )}
             {!isLoading &&
-              rows.map((d) => {
+              filteredRows.map((d) => {
                 const entry = latestByDriver.get(d.id)
                 return (
                   <tr key={d.id}>
@@ -155,9 +212,15 @@ export default function Blacklist() {
         </table>
       </div>
 
-      {!isLoading && rows.length > 0 && (
+      {!isLoading && filteredRows.length > 0 && (
         <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
-          ทั้งหมด {fmtNum(rows.length)} คน
+          {term ? (
+            <>
+              พบ {fmtNum(filteredRows.length)} จากทั้งหมด {fmtNum(rows.length)} คน
+            </>
+          ) : (
+            <>ทั้งหมด {fmtNum(rows.length)} คน</>
+          )}
         </p>
       )}
 
