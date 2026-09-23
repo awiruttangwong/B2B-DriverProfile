@@ -4,7 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { DriverDirectoryRow } from '../types/database'
-import { fmtNum, fmtPhone, fmtSince, safeSearchTerm, STATUS_LABEL } from '../lib/format'
+import {
+  fmtNum,
+  fmtPhone,
+  fmtSince,
+  safeSearchTerm,
+  STATUS_LABEL,
+  suspensionRemainingLabel,
+} from '../lib/format'
 import { JOB_RANGE_OPTIONS } from '../lib/jobRanges'
 import ScoreCell from '../components/ScoreCell'
 import ReadinessPanel from '../components/ReadinessPanel'
@@ -464,6 +471,13 @@ export default function Drivers() {
                         {STATUS_LABEL[d.status] ?? d.status}
                       </span>
                     )}
+                    {/* พักงานแบบมีกำหนดเวลา (ฟีเจอร์ 30/60/90 วัน) — ไม่กำหนดเวลาจะไม่มี
+                        status_until เลยไม่มีบรรทัดนี้ เหมือนพฤติกรรมเดิมทุกอย่าง */}
+                    {d.status === 'inactive' && d.status_until && (
+                      <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                        {suspensionRemainingLabel(d.status_until)}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -498,6 +512,7 @@ export default function Drivers() {
           driverName={statusFor.full_name}
           current={statusFor.status}
           currentReason={statusFor.status_reason}
+          currentStatusUntil={statusFor.status_until}
           onClose={() => setStatusFor(null)}
         />
       )}

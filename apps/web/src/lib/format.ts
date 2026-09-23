@@ -61,6 +61,28 @@ export function fmtDateShort(iso: string | null | undefined): string {
   return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
 }
 
+/**
+ * จำนวนวันปฏิทินที่เหลือจนถึงวันที่ระบุ (ไม่ใช่ชั่วโมง) — ใช้เทียบเวลาเที่ยงคืนท้องถิ่น
+ * ทั้งสองฝั่งจึงได้เลขวันเต็ม ๆ ไม่ใช่เศษชั่วโมงที่ปัดแล้วคลาดเคลื่อนได้ ±1 วัน
+ * ค่าติดลบ = เลยกำหนดมาแล้ว, 0 = ครบกำหนดวันนี้
+ */
+export function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const target = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(target.getTime())) return null
+  const today = new Date(`${localISODate()}T00:00:00`)
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000)
+}
+
+/** ข้อความสั้น ๆ บอกว่าพักงานเหลืออีกกี่วัน — ใช้คู่กับ status_until ตอน status='inactive' */
+export function suspensionRemainingLabel(statusUntil: string | null | undefined): string {
+  const days = daysUntil(statusUntil)
+  if (days === null) return ''
+  if (days <= 0) return 'ครบกำหนดแล้ว'
+  if (days === 1) return 'เหลืออีก 1 วัน'
+  return `เหลืออีก ${days} วัน`
+}
+
 export function fmtMoney(v: number | null | undefined): string {
   if (v === null || v === undefined) return '—'
   return v.toLocaleString('th-TH', { maximumFractionDigits: 0 })

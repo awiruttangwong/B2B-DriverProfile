@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -8,6 +9,7 @@ import {
   IconBan,
   IconClock,
   IconLogout,
+  IconPause,
   IconStar,
   IconTarget,
   IconTruck,
@@ -20,6 +22,7 @@ import Drivers from './pages/Drivers'
 import DriverProfile from './pages/DriverProfile'
 import FindDriver from './pages/FindDriver'
 import PendingRatings from './pages/PendingRatings'
+import Suspended from './pages/Suspended'
 import Blacklist from './pages/Blacklist'
 import Upload from './pages/Upload'
 import NewJob from './pages/NewJob'
@@ -139,9 +142,27 @@ function useBlacklistCount() {
   return data
 }
 
+function useSuspendedCount() {
+  const { data } = useQuery({
+    queryKey: ['suspended-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('driver_directory')
+        .select('id', { count: 'exact' })
+        .eq('status', 'inactive')
+        .limit(1)
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 2 * 60_000,
+  })
+  return data
+}
+
 function NavLinks() {
   const { canSeeActivityLog } = useAuth()
   const pending = usePendingCount()
+  const suspended = useSuspendedCount()
   const blacklisted = useBlacklistCount()
   return (
     <nav className="nav" aria-label="เมนูหลัก">
@@ -153,6 +174,9 @@ function NavLinks() {
       </Tab>
       <Tab to="/pending" icon={<IconStar />} count={pending}>
         รอประเมิน
+      </Tab>
+      <Tab to="/suspended" icon={<IconPause />} count={suspended}>
+        พักงาน
       </Tab>
       <Tab to="/blacklist" icon={<IconBan />} count={blacklisted}>
         แบล็คลิสต์
@@ -197,6 +221,19 @@ function BootScreen() {
 
 function Shell() {
   const { session, profile, loading, canSeeActivityLog, signOut } = useAuth()
+
+  // ซ่อมแถว พขร. ที่พ้นกำหนดพักงานแล้วให้กลับเป็น "ใช้งาน" จริง ๆ ในตาราง (ไม่ใช่แค่
+  // คำนวณสดตอน query) ครั้งเดียวตอนเข้าแอป — fire-and-forget ไม่บล็อกหน้าจอ ไม่ต้อง
+  // สนใจผลลัพธ์หรือ error เพราะความถูกต้องที่ผู้ใช้เห็นมาจาก driver_effective_status()
+  // ในตัว view/ฟังก์ชันค้นหาอยู่แล้วเสมอ ไม่ว่าฟังก์ชันนี้จะถูกเรียกสำเร็จหรือไม่ก็ตาม
+  // ฟังก์ชันนี้แค่ทำให้แถวจริงกับประวัติไม่ค้างเป็นสถานะเก่าเรื่อย ๆ เฉย ๆ
+  // โหมดทดลองไม่มีฐานข้อมูลจริงให้ซ่อม จึงข้ามไปเลย ไม่ต้องยิง rpc ที่รู้อยู่แล้วว่าไม่รองรับ
+  useEffect(() => {
+    if (IS_DEMO || !session) return
+    void supabase.rpc('fn_expire_driver_suspensions').then(({ error }) => {
+      if (error) console.warn('ซ่อมสถานะพักงานที่พ้นกำหนดไม่สำเร็จ (ไม่กระทบการใช้งาน):', error.message)
+    })
+  }, [session])
 
   if (loading && !session) return <BootScreen />
 
@@ -293,6 +330,7 @@ function Shell() {
             <Route path="/drivers/:id" element={<DriverProfile />} />
             <Route path="/find" element={<FindDriver />} />
             <Route path="/pending" element={<PendingRatings />} />
+            <Route path="/suspended" element={<Suspended />} />
             <Route path="/blacklist" element={<Blacklist />} />
             <Route path="/jobs/new" element={<NewJob />} />
             <Route path="/upload" element={<Upload />} />

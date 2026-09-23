@@ -9,6 +9,7 @@ import {
   CONTACT_OUTCOME_LABEL,
   CONTACT_OUTCOME_TONE,
   STATUS_LABEL,
+  fmtDateShort,
   fmtDateTime,
   fmtNum,
   roleLabel,
@@ -32,6 +33,9 @@ function Detail({ row }: { row: ActivityLogRow }) {
     const from = d.from as string | null
     const to = d.to as string
     const reason = d.reason as string | null
+    // มีเฉพาะแถวที่เกิดหลัง 0031_driver_suspension_duration.sql — แถวเก่าก่อนหน้านั้น
+    // ไม่มีคีย์นี้ใน detail เลย จึงต้องรองรับ undefined ด้วย ไม่ใช่แค่ null
+    const statusUntil = d.status_until as string | null | undefined
     return (
       <>
         <span className="row" style={{ gap: 6 }}>
@@ -42,6 +46,11 @@ function Detail({ row }: { row: ActivityLogRow }) {
             </>
           )}
           <span className="badge">{STATUS_LABEL[to] ?? to}</span>
+          {to === 'inactive' && statusUntil && (
+            <span className="muted" style={{ fontSize: 12 }}>
+              ถึง {fmtDateShort(statusUntil)}
+            </span>
+          )}
         </span>
         {reason && (
           <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>

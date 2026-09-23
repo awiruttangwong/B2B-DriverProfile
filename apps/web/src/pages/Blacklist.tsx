@@ -160,6 +160,7 @@ export default function Blacklist() {
           driverName={statusFor.full_name}
           current={statusFor.status}
           currentReason={statusFor.status_reason}
+          currentStatusUntil={statusFor.status_until}
           onClose={() => setStatusFor(null)}
         />
       )}

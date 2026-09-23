@@ -1394,14 +1394,16 @@ td.nowrap,
 }
 /* เส้นแบ่งคอลัมน์ — ไล่ตั้งแต่หัวตารางลงมาถึงแถวสุดท้าย สีเดียวกับเส้นคั่นแถว (--line)
    จึงเป็นตารางตารางเดียวกัน ไม่ใช่เส้นสองชุดที่สีต่างกัน คอลัมน์แรกไม่ต้องมีเส้นซ้าย
-   (ขอบการ์ดทำหน้าที่นั้นอยู่แล้ว) — ใช้ร่วมกับหน้ารายชื่อ พขร., รอประเมิน และแบล็คลิสต์
-   ด้วย ให้เข้าชุดกัน */
+   (ขอบการ์ดทำหน้าที่นั้นอยู่แล้ว) — ใช้ร่วมกับหน้ารายชื่อ พขร., รอประเมิน, พักงาน และ
+   แบล็คลิสต์ ด้วย ให้เข้าชุดกัน */
 .fit-table th + th,
 .fit-table td + td,
 .drivers-table th + th,
 .drivers-table td + td,
 .pending-table th + th,
 .pending-table td + td,
+.suspended-table th + th,
+.suspended-table td + td,
 .blacklist-table th + th,
 .blacklist-table td + td {
   border-left: 1px solid var(--line);

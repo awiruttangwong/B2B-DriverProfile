@@ -2,10 +2,24 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { DriverStatus } from '../types/database'
-import { STATUS_LABEL } from '../lib/format'
+import { STATUS_LABEL, fmtDateShort, localISODate, suspensionRemainingLabel } from '../lib/format'
 
 /** สถานะที่ทำให้ พขร. หายจากหน้าหา พขร. เพื่อเข้ารับงาน จึงต้องกรอกเหตุผล */
 export const BLOCKING: DriverStatus[] = ['inactive', 'blacklisted']
+
+/**
+ * ตัวเลือกระยะเวลาพักงาน — เฉพาะตอนเลือกสถานะ "พักงาน" เท่านั้น
+ *   'keep'       คงกำหนดเดิมไว้ (โผล่เฉพาะตอนพักงานอยู่แล้วและมีกำหนดเวลาเดิม)
+ *   30/60/90     ตั้งกำหนดใหม่นับจากวันนี้
+ *   'indefinite' ไม่กำหนดเวลา (พฤติกรรมเดิมก่อนมีฟีเจอร์นี้)
+ */
+type DurationChoice = 'keep' | 30 | 60 | 90 | 'indefinite'
+
+function addDaysISO(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return localISODate(d)
+}
 
 const OPTIONS: {
   v: DriverStatus
@@ -39,6 +53,10 @@ interface Props {
   driverName: string
   current: DriverStatus
   currentReason: string | null
+  /** วันที่พักงานปัจจุบันจะครบกำหนด — มีความหมายเฉพาะตอน current==='inactive' เท่านั้น
+   *  ใช้ตั้งค่าเริ่มต้นของตัวเลือกระยะเวลาให้ตรงกับของเดิม (เลือก "คงเดิม" ไว้ก่อน แทนที่
+   *  จะรีเซ็ตเป็นไม่กำหนดเวลาทุกครั้งที่เปิดกล่อง ซึ่งจะลบกำหนดเดิมทิ้งโดยไม่ตั้งใจ) */
+  currentStatusUntil?: string | null
   /** เปิดมาแล้วเลือกสถานะนี้ไว้ล่วงหน้า — ใช้กับปุ่ม "ย้อนกลับ" จากประวัติ */
   initialNext?: DriverStatus
   onClose: () => void
@@ -49,6 +67,7 @@ export default function StatusDialog({
   driverName,
   current,
   currentReason,
+  currentStatusUntil,
   initialNext,
   onClose,
 }: Props) {
@@ -57,10 +76,26 @@ export default function StatusDialog({
   const [reason, setReason] = useState(currentReason ?? '')
   const [err, setErr] = useState<string | null>(null)
 
+  const hasExistingDuration = current === 'inactive' && !!currentStatusUntil
+  const [duration, setDuration] = useState<DurationChoice>(
+    hasExistingDuration ? 'keep' : 'indefinite',
+  )
+
   const needsReason = BLOCKING.includes(next)
-  const changed = next !== current
+  const showDuration = next === 'inactive'
+  // ตั้งกำหนดเวลาพักงานใหม่ถือเป็นการเปลี่ยนแปลงด้วย แม้สถานะจะยังเป็น "พักงาน" เดิม —
+  // ไม่งั้นจะปรับ/ต่อ/ย่นระยะเวลาไม่ได้เลยถ้าไม่สลับไปสถานะอื่นแล้วกลับมาก่อน
+  const changed = next !== current || (showDuration && current === 'inactive' && duration !== 'keep')
   // ไม่จำกัดความยาวขั้นต่ำ — บังคับแค่ห้ามว่าง ความยาวเท่าไรก็เขียนได้
   const canSave = changed && (!needsReason || reason.trim().length > 0)
+
+  /** null = ไม่กำหนดเวลา (หรือสถานะนี้ไม่เกี่ยวกับกำหนดเวลาเลย) */
+  function computeStatusUntil(): string | null {
+    if (!showDuration) return null
+    if (duration === 'keep') return currentStatusUntil ?? null
+    if (duration === 'indefinite') return null
+    return addDaysISO(duration)
+  }
 
   const save = useMutation({
     mutationFn: async () => {
@@ -71,6 +106,7 @@ export default function StatusDialog({
         .update({
           status: next,
           status_reason: needsReason ? reason.trim() : null,
+          status_until: computeStatusUntil(),
         })
         .eq('id', driverId)
       if (error) throw error
@@ -90,6 +126,11 @@ export default function StatusDialog({
       // (ซึ่งเป็นปุ่มหลักของหน้านั้น) จะไม่เห็นผลอะไรเลย แถวเดิมค้างอยู่เหมือนกดไม่ติด
       void qc.invalidateQueries({ queryKey: ['blacklist'] })
       void qc.invalidateQueries({ queryKey: ['blacklist-count'] })
+      // เหตุผลเดียวกันอีกครั้ง ฝั่งหน้าพักงาน — ทั้งตอนเพิ่งสั่งพักงาน (ต้องโผล่ในหน้านั้น
+      // ทันที) และตอนปรับ/ต่อ/ย่นระยะเวลาระหว่างพักงาน (ต้องเห็นกำหนดเวลาใหม่ทันที ไม่ใช่
+      // ค่าเก่าค้างอยู่จนกว่าจะรีเฟรชหน้าเอง)
+      void qc.invalidateQueries({ queryKey: ['suspended'] })
+      void qc.invalidateQueries({ queryKey: ['suspended-count'] })
       onClose()
     },
     onError: (e: Error) => setErr(translate(e.message)),
@@ -183,6 +224,59 @@ export default function StatusDialog({
               )
             })}
           </div>
+
+          {/* ระยะเวลาพักงาน — โผล่เฉพาะตอนเลือก "พักงาน" เท่านั้น ("ห้ามใช้งาน" ยังคงไม่มี
+              กำหนดเวลาเหมือนเดิม ตามที่ตกลงไว้ว่าฟีเจอร์นี้มีผลกับกรณีพักงานเท่านั้น) */}
+          {showDuration && (
+            <div style={{ marginTop: 16 }}>
+              <label id="duration-label">ระยะเวลาพักงาน</label>
+              <div
+                role="radiogroup"
+                aria-labelledby="duration-label"
+                className="row"
+                style={{ gap: 6, flexWrap: 'wrap' }}
+              >
+                {hasExistingDuration && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={duration === 'keep'}
+                    className={`badge badge-btn ${duration === 'keep' ? 'brand' : ''}`}
+                    onClick={() => setDuration('keep')}
+                  >
+                    คงเดิม · {suspensionRemainingLabel(currentStatusUntil)}
+                  </button>
+                )}
+                {([30, 60, 90] as const).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    role="radio"
+                    aria-checked={duration === n}
+                    className={`badge badge-btn ${duration === n ? 'brand' : ''}`}
+                    onClick={() => setDuration(n)}
+                  >
+                    {n} วัน
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={duration === 'indefinite'}
+                  className={`badge badge-btn ${duration === 'indefinite' ? 'brand' : ''}`}
+                  onClick={() => setDuration('indefinite')}
+                >
+                  ไม่กำหนดเวลา
+                </button>
+              </div>
+              {duration !== 'keep' && duration !== 'indefinite' && (
+                <p className="hint" style={{ marginTop: 8 }}>
+                  พ้นกำหนด → ระบบจะปรับสถานะ "{STATUS_LABEL.active}" อัตโนมัติ วันที่{' '}
+                  {fmtDateShort(computeStatusUntil())}
+                </p>
+              )}
+            </div>
+          )}
 
           {needsReason && (
             <div className="field" style={{ marginTop: 16 }}>

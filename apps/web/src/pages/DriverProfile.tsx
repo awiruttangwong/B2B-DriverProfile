@@ -26,6 +26,7 @@ import {
   fmtSince,
   OUTCOME_LABEL,
   STATUS_LABEL,
+  suspensionRemainingLabel,
 } from '../lib/format'
 import { IconArrowLeft, IconCompanyTruck, IconEdit, IconPhone } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
@@ -291,6 +292,11 @@ export default function DriverProfile() {
               >
                 {STATUS_LABEL[d.status] ?? d.status}
               </span>
+              {d.status === 'inactive' && d.status_until && (
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  {suspensionRemainingLabel(d.status_until)}
+                </span>
+              )}
               {can('admin', 'hr', 'ops') && (
                 <button
                   className="btn btn-sm"
@@ -702,56 +708,74 @@ export default function DriverProfile() {
               <h2>ประวัติการเปลี่ยนสถานะ</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {(statusLog.data ?? []).map((h, i) => (
-                <div
-                  key={h.id}
-                  className="card-pad"
-                  style={{ borderBottom: '1px solid var(--line)', paddingTop: 13, paddingBottom: 13 }}
-                >
-                  <div className="row" style={{ gap: 7, justifyContent: 'space-between' }}>
-                    <div className="row" style={{ gap: 7 }}>
-                      {h.from_status && (
-                        <>
-                          <span className="badge">{STATUS_LABEL[h.from_status] ?? h.from_status}</span>
-                          <span className="muted" aria-hidden="true">
-                            →
+              {(statusLog.data ?? []).map((h, i) => {
+                // ไม่มีคอลัมน์ระบุตรง ๆ ว่ารายการนี้เกิดจากระบบปลดพักงานอัตโนมัติหรือคนสั่งเอง
+                // (เก็บแค่ changed_by) แต่ "พักงาน→ใช้งาน โดยไม่มีผู้บันทึก" เป็นรูปแบบที่เกิด
+                // ได้ทางเดียวเท่านั้นในระบบนี้ เพราะการเปลี่ยนสถานะผ่านแอปทุกครั้งมี auth.uid()
+                // เสมอ — ใช้สังเกตแทนการเพิ่มคอลัมน์ใหม่
+                const isAutoExpiry =
+                  !h.changed_by_name && h.from_status === 'inactive' && h.to_status === 'active'
+                return (
+                  <div
+                    key={h.id}
+                    className="card-pad"
+                    style={{ borderBottom: '1px solid var(--line)', paddingTop: 13, paddingBottom: 13 }}
+                  >
+                    <div className="row" style={{ gap: 7, justifyContent: 'space-between' }}>
+                      <div className="row" style={{ gap: 7 }}>
+                        {h.from_status && (
+                          <>
+                            <span className="badge">{STATUS_LABEL[h.from_status] ?? h.from_status}</span>
+                            <span className="muted" aria-hidden="true">
+                              →
+                            </span>
+                          </>
+                        )}
+                        <span
+                          className={`badge ${
+                            h.to_status === 'active'
+                              ? 'ok'
+                              : h.to_status === 'blacklisted'
+                                ? 'bad'
+                                : 'warn'
+                          }`}
+                        >
+                          {STATUS_LABEL[h.to_status] ?? h.to_status}
+                        </span>
+                        {/* กำหนดเวลาพักงานที่ตั้งไว้ตอนนั้น (ฟีเจอร์ 30/60/90 วัน) — เก็บแยกไว้ใน
+                            ประวัติเพราะแถวจริงบน drivers จะถูกเคลียร์ทิ้งเมื่อพ้นกำหนดแล้ว */}
+                        {h.to_status === 'inactive' && h.status_until && (
+                          <span className="muted" style={{ fontSize: 12 }}>
+                            ถึง {fmtDateShort(h.status_until)}
                           </span>
-                        </>
+                        )}
+                      </div>
+                      {/* ย้อนกลับได้เฉพาะรายการล่าสุด — ไม่แก้/ลบประวัติเดิม แค่เปลี่ยนสถานะ
+                          กลับแล้วบันทึกเป็นรายการใหม่ต่อท้าย ร่องรอยเดิมยังอยู่ครบ */}
+                      {i === 0 && h.from_status && d.status === h.to_status && can('admin', 'hr', 'ops') && (
+                        <button
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setStatusOpen({ initialNext: h.from_status! })}
+                          title={`เปลี่ยนสถานะกลับเป็น "${STATUS_LABEL[h.from_status] ?? h.from_status}"`}
+                        >
+                          ย้อนกลับ
+                        </button>
                       )}
-                      <span
-                        className={`badge ${
-                          h.to_status === 'active'
-                            ? 'ok'
-                            : h.to_status === 'blacklisted'
-                              ? 'bad'
-                              : 'warn'
-                        }`}
-                      >
-                        {STATUS_LABEL[h.to_status] ?? h.to_status}
-                      </span>
                     </div>
-                    {/* ย้อนกลับได้เฉพาะรายการล่าสุด — ไม่แก้/ลบประวัติเดิม แค่เปลี่ยนสถานะ
-                        กลับแล้วบันทึกเป็นรายการใหม่ต่อท้าย ร่องรอยเดิมยังอยู่ครบ */}
-                    {i === 0 && h.from_status && d.status === h.to_status && can('admin', 'hr', 'ops') && (
-                      <button
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => setStatusOpen({ initialNext: h.from_status! })}
-                        title={`เปลี่ยนสถานะกลับเป็น "${STATUS_LABEL[h.from_status] ?? h.from_status}"`}
-                      >
-                        ย้อนกลับ
-                      </button>
+                    {h.reason && (
+                      <p style={{ margin: '6px 0 0', fontSize: 13.5, color: 'var(--ink-2)' }}>
+                        {h.reason}
+                      </p>
                     )}
+                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      {isAutoExpiry
+                        ? 'ระบบ (ครบกำหนดพักงาน)'
+                        : (h.changed_by_name ?? 'ไม่ทราบผู้เปลี่ยน')}{' '}
+                      · {fmtDate(h.changed_at)}
+                    </div>
                   </div>
-                  {h.reason && (
-                    <p style={{ margin: '6px 0 0', fontSize: 13.5, color: 'var(--ink-2)' }}>
-                      {h.reason}
-                    </p>
-                  )}
-                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                    {h.changed_by_name ?? 'ไม่ทราบผู้เปลี่ยน'} · {fmtDate(h.changed_at)}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -764,6 +788,7 @@ export default function DriverProfile() {
           driverName={d.full_name}
           current={d.status}
           currentReason={d.status_reason}
+          currentStatusUntil={d.status_until}
           initialNext={statusOpen.initialNext}
           onClose={() => setStatusOpen(null)}
         />

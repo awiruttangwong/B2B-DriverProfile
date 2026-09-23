@@ -82,6 +82,11 @@ export interface DriverDirectoryRow {
   phone: string
   status: DriverStatus
   status_reason: string | null
+  /** วันที่พักงานจะครบกำหนดและกลับเป็น "ใช้งาน" เอง — มีค่าได้เฉพาะตอน status='inactive'
+   *  เท่านั้น, null = พักงานแบบไม่กำหนดเวลา (ของเดิม) — driver_directory คำนวณสถานะ
+   *  ที่แท้จริงให้แล้ว (0031_driver_suspension_duration.sql) พ้นกำหนดจะเห็น status='active'
+   *  status_until=null ทันที แม้แถวจริงยังไม่ถูกซ่อมก็ตาม */
+  status_until: string | null
   employment: EmploymentType
   note: string | null
   total_jobs: number | null
@@ -201,6 +206,9 @@ export interface DriverStatusLogRow {
   from_status: DriverStatus | null
   to_status: DriverStatus
   reason: string | null
+  /** ระยะเวลาพักงานที่ตั้งไว้ตอนนั้น (ถ้ามี) — เก็บไว้ในประวัติแยกจาก drivers.status_until
+   *  เพราะแถวจริงจะถูกเคลียร์ทิ้งเมื่อพ้นกำหนด แต่ประวัติต้องยังบอกได้ว่าตอนนั้นตั้งไว้กี่วัน */
+  status_until: string | null
   changed_at: string
   changed_by: string | null
   changed_by_name: string | null
