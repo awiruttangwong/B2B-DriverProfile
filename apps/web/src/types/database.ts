@@ -67,6 +67,13 @@ export interface DriverPhone {
   position: 2 | 3
 }
 
+/** table: driver_favorites — พขร. ที่ผู้ใช้แต่ละคนปักหมุดไว้เป็น "พขร. ประจำ" ของตัวเอง (private ต่อ user) */
+export interface DriverFavorite {
+  user_id: string
+  driver_id: string
+  created_at: string
+}
+
 /** driver_private — ข้อมูลอ่อนไหว เปิดอ่าน/เขียนได้เฉพาะ admin/hr (RLS can_see_pii()) */
 export interface DriverPrivateDoc {
   driver_id: string

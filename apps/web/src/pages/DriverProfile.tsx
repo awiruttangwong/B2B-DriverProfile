@@ -28,13 +28,14 @@ import {
   STATUS_LABEL,
   suspensionRemainingLabel,
 } from '../lib/format'
-import { IconArrowLeft, IconCompanyTruck, IconEdit, IconPhone } from '../components/icons'
+import { IconArrowLeft, IconCompanyTruck, IconEdit, IconPhone, IconPin } from '../components/icons'
 import StatusDialog, { BLOCKING } from '../components/StatusDialog'
 import ContactDialog from '../components/ContactDialog'
 import DocumentSlot from '../components/DocumentSlot'
 import ExtraPhones from '../components/ExtraPhones'
 import SkeletonRows from '../components/SkeletonRows'
 import SkeletonListItems from '../components/SkeletonListItems'
+import { useFavorite } from '../hooks/useFavorite'
 
 /** จำนวนรายการโทรที่แสดงก่อนกด "ดูทั้งหมด" — ส่วนใหญ่คนถัดไปสนใจแค่ไม่กี่ครั้งล่าสุด */
 const CONTACTS_PREVIEW = 5
@@ -56,6 +57,12 @@ export default function DriverProfile() {
   const [statusOpen, setStatusOpen] = useState<{ initialNext?: DriverStatus } | null>(null)
   const [contactOpen, setContactOpen] = useState<{ existing?: DriverContact } | null>(null)
   const [showAllContacts, setShowAllContacts] = useState(false)
+  const {
+    isFavorite,
+    isToggling,
+    error: favoriteError,
+    toggle: toggleFavorite,
+  } = useFavorite(id)
 
   // เข้าหน้านี้ได้จากหลายที่ (รายชื่อ พขร., หา พขร., รอประเมิน, พักงาน, แบล็คลิสต์,
   // บันทึกกิจกรรม, ช่องค้นหาแนะนำ) เดิมปุ่ม "กลับ" ฝัง Link to="/drivers" ตายตัว
@@ -300,7 +307,7 @@ export default function DriverProfile() {
               )}
             </div>
             <ExtraPhones driverId={d.id} primaryPhone={d.phone} phones={phones.data ?? []} />
-            <div className="row" style={{ gap: 6, marginTop: 8 }}>
+            <div className="row status-row" style={{ gap: 6, marginTop: 8 }}>
               <span
                 className={`badge ${
                   d.status === 'active' ? 'ok' : d.status === 'blacklisted' ? 'bad' : 'warn'
@@ -323,12 +330,30 @@ export default function DriverProfile() {
                   เปลี่ยนสถานะ
                 </button>
               )}
+              <button
+                type="button"
+                className="pin-toggle"
+                aria-pressed={isFavorite}
+                aria-label={
+                  isFavorite ? 'เอาออกจากรายการ พขร. ประจำ' : 'เพิ่มเป็น พขร. ประจำของฉัน'
+                }
+                disabled={isToggling}
+                onClick={toggleFavorite}
+                title={isFavorite ? 'เอาออกจากรายการ พขร. ประจำ' : 'เพิ่มเป็น พขร. ประจำของฉัน'}
+              >
+                <IconPin size={18} filled={isFavorite} />
+              </button>
               {(d.recent_problem_jobs ?? 0) > 0 && (
                 <span className="badge bad">
                   มีเหตุ {d.recent_problem_jobs} ครั้งใน 12 เดือน
                 </span>
               )}
             </div>
+            {favoriteError && (
+              <div className="doc-slot-err" style={{ marginTop: 4 }}>
+                {favoriteError}
+              </div>
+            )}
 
             {BLOCKING.includes(d.status) && (
               <div className="note-box warn" style={{ marginTop: 10, maxWidth: 62 + 'ch' }}>

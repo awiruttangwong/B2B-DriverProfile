@@ -219,3 +219,24 @@ export const IconPause = (p: P) => (
     <path d="M10 9v6M14 9v6" />
   </Svg>
 )
+
+/** หมุดปัก — เมนู/ปุ่มปักหมุด พขร. ประจำ ไม่ใช้ IconStar ซ้ำ เพราะ IconStar ถูกใช้กับ
+ *  เมนู "รอประเมิน" อยู่แล้ว ใช้ซ้ำจะสับสน รับ prop filled แยก ไม่ผ่าน Svg ตัวช่วยกลาง
+ *  (helper ตั้ง fill="none" ตายตัว) เพราะต้องสลับ fill ตอนปักหมุดแล้ว */
+export const IconPin = ({ size = 18, filled = false }: P & { filled?: boolean }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor"
+    strokeWidth={filled ? '1' : '1.6'}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" />
+    <circle cx="12" cy="10" r="2.5" fill={filled ? 'var(--surface)' : 'none'} />
+  </svg>
+)

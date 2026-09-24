@@ -755,6 +755,60 @@ input[type='password'] {
   text-decoration: none;
 }
 
+/* ปุ่มปักหมุด "พขร. ประจำของฉัน" — ต่อท้ายปุ่ม "เปลี่ยนสถานะ" ในแถวสถานะของหัวโปรไฟล์
+   (และแต่ละแถวในหน้ารายการ) ยังไม่ปักเป็นไอคอนเส้นสีเทา ปักแล้วทึบสี --warn (โทนเดียวกับที่
+   ระบบใช้เน้นสถานะอยู่แล้ว ไม่ต้องเพิ่มสีแบรนด์ใหม่ ยืมสีชุดเดิมของ badge.warn) */
+.pin-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  cursor: pointer;
+}
+.pin-toggle:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.pin-toggle[aria-pressed='true'] {
+  color: var(--warn);
+}
+.pin-toggle[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--warn-soft);
+}
+.pin-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* แถวสถานะในหัวโปรไฟล์ (ป้ายสถานะ + ปุ่มเปลี่ยนสถานะ + ปุ่มปักหมุด) — ผู้ใช้ทักท้วงว่าแต่ละ
+   ชิ้นสูงไม่เท่ากันดูไม่เป็นมาตรฐาน (.badge เตี้ยกว่า .btn-sm อยู่แล้วโดยดีไซน์ทั่วแอป เพราะ
+   ป้ายสถานะใช้ในตารางที่ต้องกระชับ ส่วนปุ่มปักหมุดวงกลมก็เล็กกว่าทั้งคู่) บังคับความสูงขั้นต่ำ
+   ให้เท่ากันเฉพาะในแถวนี้ผ่าน child combinator — ไม่แก้ .badge/.btn ตรง ๆ เพราะสองคลาสนี้ใช้
+   ทั่วทั้งแอปในบริบทอื่นที่ไม่ต้องการความสูงนี้ (เช่น badge ในตารางรายชื่อ พขร.) */
+.status-row > .badge,
+.status-row > .btn-sm,
+.status-row > .pin-toggle {
+  min-height: 32px;
+  box-sizing: border-box;
+}
+.status-row > .pin-toggle {
+  width: 32px;
+  padding: 0;
+  /* ไม่มีขอบเหมือนใน MyFavorites.tsx (ที่นั่นเป็นไอคอนเปล่าในตาราง เข้ากับแถวได้อยู่แล้ว)
+     แต่ตรงนี้อยู่ติดกับ badge/ปุ่มที่มีขอบทั้งคู่ ไม่มีขอบเลยดูเหมือนช่องว่างลอย ๆ กลางแถว
+     จึงเติมขอบให้เป็นชิปวงกลมแบบเดียวกัน (ผู้ใช้ทักเรื่องนี้โดยตรง) */
+  border: 1px solid var(--line-strong);
+  background: var(--raised);
+}
+.status-row > .pin-toggle[aria-pressed='true'] {
+  border-color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+}
+
 /* เบอร์สำรอง (ที่ 2/3) — วางใต้เบอร์หลัก บรรทัดเล็ก ไม่กินพื้นที่ */
 .extra-phones {
   margin-top: 3px;

@@ -131,6 +131,11 @@ export default function StatusDialog({
       // ค่าเก่าค้างอยู่จนกว่าจะรีเฟรชหน้าเอง)
       void qc.invalidateQueries({ queryKey: ['suspended'] })
       void qc.invalidateQueries({ queryKey: ['suspended-count'] })
+      // หน้า "พขร. ประจำของฉัน" อ่านสถานะจาก driver_directory ด้วยคีย์ของตัวเอง ไม่ได้ขึ้นกับ
+      // ['driver']/['drivers'] ด้านบน — ถ้าไม่ล้าง การกดเปลี่ยนสถานะจากแถวในหน้านั้นจะเห็น
+      // ป้ายสถานะเดิมค้างอยู่เหมือนกดไม่ติด (ทดสอบยืนยันแล้ว: กดเปลี่ยนเป็น "ทดลองงาน" สำเร็จ
+      // แต่ป้ายยังขึ้น "ใช้งาน" จนกว่าจะพ้น staleTime 60 วินาที)
+      void qc.invalidateQueries({ queryKey: ['favorites'] })
       onClose()
     },
     onError: (e: Error) => setErr(translate(e.message)),

@@ -10,6 +10,7 @@ import {
   IconClock,
   IconLogout,
   IconPause,
+  IconPin,
   IconStar,
   IconTarget,
   IconTruck,
@@ -20,6 +21,7 @@ import ThemeToggle from './components/ThemeToggle'
 import Login from './pages/Login'
 import Drivers from './pages/Drivers'
 import DriverProfile from './pages/DriverProfile'
+import MyFavorites from './pages/MyFavorites'
 import FindDriver from './pages/FindDriver'
 import PendingRatings from './pages/PendingRatings'
 import Suspended from './pages/Suspended'
@@ -159,15 +161,40 @@ function useSuspendedCount() {
   return data
 }
 
+/**
+ * จำนวน พขร. ที่ปักหมุดไว้ — ต่างจาก 3 hook นับด้านบนตรงที่ไม่ต้อง .eq() กรอง user เอง
+ * เพราะ RLS ของ driver_favorites (0034_driver_favorites.sql) กรองให้อัตโนมัติอยู่แล้วว่า
+ * select เห็นแค่แถวของตัวเอง (user_id = auth.uid())
+ */
+function useFavoriteCount() {
+  const { data } = useQuery({
+    queryKey: ['favorite-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('driver_favorites')
+        .select('driver_id', { count: 'exact' })
+        .limit(1)
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 2 * 60_000,
+  })
+  return data
+}
+
 function NavLinks() {
   const { canSeeActivityLog } = useAuth()
   const pending = usePendingCount()
   const suspended = useSuspendedCount()
   const blacklisted = useBlacklistCount()
+  const favorites = useFavoriteCount()
   return (
     <nav className="nav" aria-label="เมนูหลัก">
       <Tab to="/drivers" icon={<IconUsers />}>
         รายชื่อ พขร.
+      </Tab>
+      <Tab to="/favorites" icon={<IconPin />} count={favorites}>
+        พขร. ประจำของฉัน
       </Tab>
       <Tab to="/find" icon={<IconTarget />}>
         หา พขร. เพื่อเข้ารับงาน
@@ -328,6 +355,7 @@ function Shell() {
             <Route path="/" element={<Navigate to="/drivers" replace />} />
             <Route path="/drivers" element={<Drivers />} />
             <Route path="/drivers/:id" element={<DriverProfile />} />
+            <Route path="/favorites" element={<MyFavorites />} />
             <Route path="/find" element={<FindDriver />} />
             <Route path="/pending" element={<PendingRatings />} />
             <Route path="/suspended" element={<Suspended />} />
