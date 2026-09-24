@@ -11,6 +11,7 @@ import {
   STATUS_LABEL,
   fmtDateShort,
   fmtDateTime,
+  fmtDuration,
   fmtNum,
   roleLabel,
 } from '../lib/format'
@@ -122,6 +123,28 @@ function Detail({ row }: { row: ActivityLogRow }) {
             {note}
           </div>
         )}
+      </>
+    )
+  }
+
+  if (row.action === 'login_session') {
+    const logoutAt = d.logout_at as string | null
+    const lastSeenAt = d.last_seen_at as string
+    const endAt = logoutAt ?? lastSeenAt
+    const seconds = (new Date(endAt).getTime() - new Date(row.at).getTime()) / 1000
+    return (
+      <>
+        <span className="row" style={{ gap: 6 }}>
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            {logoutAt ? `ออกเมื่อ ${fmtDateTime(logoutAt)}` : `ใช้งานล่าสุด ${fmtDateTime(lastSeenAt)}`}
+          </span>
+          {/* ไม่มีการกดออกจากระบบจริง — เวลาออกเป็นแค่ค่าประมาณจาก heartbeat ล่าสุด ไม่ใช่เวลา
+              ออกที่แน่นอน (ปิดแท็บ/เบราว์เซอร์ทิ้งเฉย ๆ ไม่มีทางรู้เวลาออกจริงได้) */}
+          {!logoutAt && <span className="badge warn">ประมาณ</span>}
+        </span>
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
+          อยู่ในระบบ {fmtDuration(seconds)}
+        </div>
       </>
     )
   }

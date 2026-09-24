@@ -74,6 +74,16 @@ export interface DriverFavorite {
   created_at: string
 }
 
+/** table: user_activity_sessions — หนึ่งแถวต่อหนึ่งครั้งที่เปิดแอป login_at/last_seen_at/logout_at
+ *  (logout_at เป็น null = ยังไม่มีการกดออกจากระบบจริง ต้องอนุมานจาก last_seen_at แทน) */
+export interface UserActivitySession {
+  id: string
+  user_id: string
+  login_at: string
+  last_seen_at: string
+  logout_at: string | null
+}
+
 /** driver_private — ข้อมูลอ่อนไหว เปิดอ่าน/เขียนได้เฉพาะ admin/hr (RLS can_see_pii()) */
 export interface DriverPrivateDoc {
   driver_id: string

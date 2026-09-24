@@ -151,6 +151,7 @@ export const ACTION_LABEL: Record<string, string> = {
   job_import: 'บันทึก/อัปโหลดงาน',
   user_join: 'ผู้ใช้งานใหม่',
   driver_contact: 'บันทึกการโทร',
+  login_session: 'เข้าใช้งานระบบ',
 }
 
 export const ACTION_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'brand'> = {
@@ -160,6 +161,20 @@ export const ACTION_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'brand'> = {
   job_import: 'brand',
   user_join: 'brand',
   driver_contact: 'brand',
+  login_session: 'brand',
+}
+
+/** '3 ชม. 12 นาที' — ระยะเวลาที่อยู่ในระบบต่อ session (0035_user_activity_sessions.sql)
+ *  ปัดเป็นนาที ไม่ต้องละเอียดถึงวินาที เพราะเป็นแค่ตัวเลขประมาณคร่าว ๆ อยู่แล้วในกรณีไม่มี
+ *  logout_at (อิงจาก heartbeat last_seen_at) */
+export function fmtDuration(seconds: number): string {
+  if (seconds < 60) return 'ไม่ถึงนาที'
+  const totalMinutes = Math.round(seconds / 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${minutes} นาที`
+  if (minutes === 0) return `${hours} ชม.`
+  return `${hours} ชม. ${minutes} นาที`
 }
 
 /** ลำดับตามนี้คือลำดับปุ่มในกล่องบันทึกการโทร — จากผลที่ยังไม่รู้คำตอบ ไปสู่ผลที่ได้คำตอบแล้ว */

@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { useSessionTracking } from './sessionTracking'
 import type { AppRole, Profile } from '../types/database'
 
 // ต้องตรงกับ allowlist ใน supabase/migrations/0021_activity_log_allowlist.sql เป๊ะ
@@ -35,6 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  // บันทึกเวลาเข้า/ออกระบบลง user_activity_sessions — โผล่เป็นประเภทกิจกรรม "เข้าใช้งานระบบ"
+  // ในหน้าบันทึกกิจกรรม (0035_user_activity_sessions.sql)
+  const { markLoggedOut } = useSessionTracking(session?.user?.id)
 
   useEffect(() => {
     let alive = true
@@ -102,10 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       can: (...roles) => (profile ? roles.includes(profile.role) : false),
       canSeeActivityLog: !!profile?.email && ACTIVITY_LOG_EMAILS.includes(profile.email.toLowerCase()),
       signOut: async () => {
+        // บันทึก logout_at ก่อนตัด session จริง — ได้เวลาออกที่แม่นยำสำหรับคนที่กดออกเองจริง ๆ
+        // (ทำก่อน signOut เสมอ เพราะ signOut แล้ว session หาย ไม่มีสิทธิ์ update แถวตัวเองอีก)
+        await markLoggedOut()
         await supabase.auth.signOut()
       },
     }),
-    [session, profile, loading],
+    [session, profile, loading, markLoggedOut],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
