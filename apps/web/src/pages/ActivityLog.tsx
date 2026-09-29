@@ -131,7 +131,8 @@ function Detail({ row }: { row: ActivityLogRow }) {
     const logoutAt = d.logout_at as string | null
     const lastSeenAt = d.last_seen_at as string
     const endAt = logoutAt ?? lastSeenAt
-    const seconds = (new Date(endAt).getTime() - new Date(row.at).getTime()) / 1000
+    // แถวก่อน 0036 เวลาออกมาจากนาฬิกาเครื่องผู้ใช้ อาจเพี้ยนจนติดลบ — ไม่แสดงค่าติดลบ
+    const seconds = Math.max(0, (new Date(endAt).getTime() - new Date(row.at).getTime()) / 1000)
     return (
       <>
         <span className="row" style={{ gap: 6 }}>
