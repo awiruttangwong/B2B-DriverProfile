@@ -9,7 +9,7 @@
  */
 
 import { supabase } from './supabase'
-import { canonCustomer, detUuid, isSamePerson } from './normalize'
+import { canonCustomer, detUuid, isSamePerson, rowHash } from './normalize'
 import type { CleanRow, InvalidRow } from './cleaning'
 
 export type {
@@ -76,6 +76,39 @@ function chunk<T>(arr: T[], size = CHUNK): T[][] {
  * ลำดับสำคัญ: ตารางอ้างอิง -> พขร. -> งาน -> การมอบหมาย
  * เพราะแต่ละขั้นต้องใช้ id จากขั้นก่อนหน้า
  */
+/** เพดานลำดับเที่ยวซ้ำที่ไล่หา — เที่ยวเดียวกันทุกช่องเกินนี้ในวันเดียวไม่มีจริง */
+const MAX_OCCURRENCE = 50
+
+/**
+ * กรอกมือทีละเที่ยว: ในระบบมีเที่ยวที่ 7 ช่องตรงกันแล้วกี่เที่ยว และ hash ของเที่ยวถัดไป
+ *
+ * ไฟล์ Excel นับเที่ยวซ้ำเป็นเที่ยวที่ 1, 2, 3 จากในไฟล์เดียวกัน (cleanSheets) แต่การกรอกมือ
+ * มาทีละแถว จึงเป็น "เที่ยวที่ 1" เสมอ — เที่ยวที่สองของวันที่วิ่งเส้นเดิมราคาเดิมจะชน hash
+ * เดิมแล้วถูกทิ้งเงียบ ๆ ต้องถามฐานข้อมูลก่อนว่ามีอยู่แล้วกี่เที่ยว แล้วให้ผู้ใช้ยืนยันว่าเป็น
+ * อีกเที่ยวจริง (ไม่ใช่กดบันทึกซ้ำ) — ลำดับที่ได้ตรงกับที่ไฟล์สะสมจะนับทีหลังพอดี
+ * ไฟล์สะสมที่มีทั้งสองเที่ยวจึงข้ามได้ถูกทั้งคู่ ไม่เกิดซ้ำ
+ */
+export async function nextOccurrence(r: CleanRow): Promise<{ existing: number; hash: string }> {
+  const parts = {
+    date: r.date,
+    customer: r.customer,
+    plate: r.plate,
+    phone: r.driverPhone,
+    route: r.route,
+    revenue: r.revenue,
+    cost: r.cost,
+  }
+  const hashes = await Promise.all(
+    Array.from({ length: MAX_OCCURRENCE }, (_, i) => rowHash(parts, i + 1)),
+  )
+  const { data, error } = await supabase.from('jobs').select('row_hash').in('row_hash', hashes)
+  if (error) throw new Error(`ตรวจงานซ้ำไม่สำเร็จ: ${error.message}`)
+  const taken = new Set((data ?? []).map((d) => (d as { row_hash: string }).row_hash))
+  const free = hashes.find((h) => !taken.has(h))
+  if (!free) throw new Error(`เที่ยวนี้ถูกบันทึกครบ ${MAX_OCCURRENCE} เที่ยวแล้ว`)
+  return { existing: taken.size, hash: free }
+}
+
 export async function ingestRows(
   rows: CleanRow[],
   opts: { filename: string; sheetName?: string; onProgress?: Progress } = {
@@ -241,13 +274,16 @@ export async function ingestRows(
 
   let done = 0
   for (const part of chunk(jobRows)) {
-    const { error } = await supabase
+    // .select() คืนเฉพาะแถวที่ insert จริง — แถวที่ชน row_hash (อีกคนอัปโหลดไฟล์ทับกันพร้อมกัน)
+    // ถูก ignore ไม่ถูกนับ ตัวเลข "บันทึกใหม่" จึงตรงกับฐานข้อมูลจริง
+    const { data, error } = await supabase
       .from('jobs')
       .upsert(part, { onConflict: 'row_hash', ignoreDuplicates: true })
+      .select('id')
     if (error) {
       report.errors.push(`บันทึกงาน: ${error.message}`)
     } else {
-      report.jobsInserted += part.length
+      report.jobsInserted += data?.length ?? 0
     }
     done += part.length
     say(65 + Math.round((done / jobRows.length) * 20), 'บันทึกงาน')

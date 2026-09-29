@@ -104,10 +104,29 @@ export function normDate(v: unknown): string | null {
 
   const s = String(v).trim()
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+  if (iso) return ymd(Number(iso[1]), Number(iso[2]), Number(iso[3]))
+
+  // ข้อความแบบ วัน/เดือน/ปี (แบบไทย) — ห้ามส่งให้ new Date() เพราะมันอ่านเป็น เดือน/วัน แบบ
+  // อเมริกัน: '05/09/2026' (5 ก.ย.) จะกลายเป็น 9 พ.ค. เงียบ ๆ ไม่มี error
+  const dmy = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/)
+  if (dmy) {
+    let y = Number(dmy[3])
+    // ปีสองหลัก: 50 ขึ้นไปถือเป็น พ.ศ. ย่อ (69 = 2569) ต่ำกว่านั้นเป็น ค.ศ. ย่อ (26 = 2026)
+    if (y < 100) y = y >= 50 ? 2500 + y : 2000 + y
+    return ymd(y, Number(dmy[2]), Number(dmy[1]))
+  }
 
   const d = new Date(s)
   return Number.isNaN(d.getTime()) ? null : roundToLocalDay(d)
+}
+
+/** ปี/เดือน/วัน -> 'YYYY-MM-DD' รับปี พ.ศ. ได้ (เกิน 2400 ลบ 543) วันที่ที่ไม่มีจริง
+ *  เช่น 31/02 คืน null แทนที่จะเลื่อนไปเดือนถัดไปเงียบ ๆ */
+function ymd(y: number, m: number, d: number): string | null {
+  if (y > 2400) y -= 543
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null
+  return toISODate(dt)
 }
 
 /** อ่าน component แบบ UTC — ใช้กับ Date ที่สร้างจากเลขล้วนเท่านั้น */

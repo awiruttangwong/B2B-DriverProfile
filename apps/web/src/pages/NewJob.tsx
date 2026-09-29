@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { cleanManualRow, ingestRows, type RawRow } from '../lib/ingest'
+import { cleanManualRow, ingestRows, nextOccurrence, type RawRow } from '../lib/ingest'
 import { normPhone, normText, splitRoute } from '../lib/normalize'
 import type { Customer, DriverDirectoryRow, VehicleType } from '../types/database'
 import { fmtMoney, fmtNum, localISODate } from '../lib/format'
@@ -29,6 +29,14 @@ export default function NewJob() {
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  // มีเที่ยวที่ 7 ช่องตรงกันในระบบแล้วกี่เที่ยว — รอผู้ใช้ยืนยันว่าเป็นอีกเที่ยวจริง ไม่ใช่กดซ้ำ
+  const [repeat, setRepeat] = useState<number | null>(null)
+  const confirmRepeat = useRef(false)
+
+  // แก้ฟอร์มแล้ว คำถามยืนยันเดิมไม่ตรงกับข้อมูลอีกต่อไป — ให้ตรวจใหม่ตอนกดบันทึก
+  useEffect(() => {
+    setRepeat(null)
+  }, [form])
 
   const allowed = can('admin', 'hr', 'ops')
 
@@ -110,6 +118,8 @@ export default function NewJob() {
 
   async function submit(e: FormEvent) {
     e.preventDefault()
+    const confirmed = confirmRepeat.current
+    confirmRepeat.current = false
     setBusy(true)
     setMsg(null)
 
@@ -136,7 +146,14 @@ export default function NewJob() {
         return
       }
 
-      const report = await ingestRows(rows, { filename: 'กรอกด้วยมือ' })
+      const next = await nextOccurrence(rows[0]!)
+      if (next.existing > 0 && !confirmed) {
+        setRepeat(next.existing)
+        return
+      }
+      setRepeat(null)
+
+      const report = await ingestRows([{ ...rows[0]!, hash: next.hash }], { filename: 'กรอกด้วยมือ' })
 
       if (report.errors.length > 0) {
         setMsg({ kind: 'err', text: report.errors[0] ?? 'บันทึกไม่สำเร็จ' })
@@ -418,6 +435,29 @@ export default function NewJob() {
             />
           </div>
         </fieldset>
+
+        {repeat !== null && (
+          <div className="note-box warn" style={{ marginBottom: 14 }}>
+            <strong>มีเที่ยวแบบนี้ในระบบแล้ว {fmtNum(repeat)} เที่ยว</strong> — วันที่ ลูกค้า ทะเบียน
+            เบอร์ พขร. เส้นทาง และราคา ตรงกันทุกช่อง
+            <br />
+            ถ้าเป็นอีกเที่ยวจริง (วิ่งเส้นเดิมซ้ำในวันเดียวกัน) กดยืนยัน ถ้าเผลอกรอกซ้ำ กดยกเลิก
+            <div className="row" style={{ marginTop: 10 }}>
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={() => {
+                  confirmRepeat.current = true
+                }}
+              >
+                ยืนยัน บันทึกเป็นเที่ยวที่ {fmtNum(repeat + 1)}
+              </button>
+              <button type="button" className="btn" onClick={() => setRepeat(null)}>
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        )}
 
         {msg && (
           <div className={`note-box ${msg.kind === 'err' ? 'err' : 'ok'}`} style={{ marginBottom: 14 }}>

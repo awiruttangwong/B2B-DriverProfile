@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
+import { supabase } from '../lib/supabase'
 import {
   cleanSheets,
   ingestRows,
@@ -54,6 +55,21 @@ export default function Upload() {
   const [clean, setClean] = useState<CleanResult | null>(null)
   const [progress, setProgress] = useState({ pct: 0, label: '' })
   const [report, setReport] = useState<IngestReport | null>(null)
+  // เที่ยวเก่าที่ถูกแก้ในไฟล์ต้นทาง — สถานะการลบทีละรายการ (job id -> สถานะ)
+  const [removed, setRemoved] = useState<Map<string, 'busy' | 'done' | 'err'>>(new Map())
+
+  async function removeOldTrip(jobId: string) {
+    setRemoved((m) => new Map(m).set(jobId, 'busy'))
+    // .select() เพราะ RLS ที่ไม่ผ่านจะลบ 0 แถวแบบเงียบ ๆ ไม่ error — ต้องนับเองว่าลบได้จริง
+    // job_assignments ของเที่ยวนั้นถูกลบตามไปด้วย (on delete cascade)
+    const { data, error } = await supabase.from('jobs').delete().eq('id', jobId).select('id')
+    const ok = !error && (data?.length ?? 0) > 0
+    setRemoved((m) => new Map(m).set(jobId, ok ? 'done' : 'err'))
+    if (ok) {
+      void qc.invalidateQueries({ queryKey: ['drivers'] })
+      void qc.invalidateQueries({ queryKey: ['driver-kpis'] })
+    }
+  }
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -143,6 +159,7 @@ export default function Upload() {
     setStage('reading')
     setError(null)
     setReport(null)
+    setRemoved(new Map())
     setClean(null)
 
     try {
@@ -691,19 +708,38 @@ export default function Upload() {
                 ระบบระบุตัวเที่ยวจาก วันที่ · ลูกค้า · ทะเบียน · เบอร์ พขร. · เส้นทาง · ราคา
                 ถ้าย้อนกลับไปแก้ช่องใดช่องหนึ่ง เที่ยวนั้นจะถูกนับเป็นเที่ยวใหม่
                 ส่วนเที่ยวเดิมยังค้างอยู่ — กลายเป็นสองเที่ยวจากงานเดียว
-                รายการด้านล่างจึงควรเปิดดูแล้วลบเที่ยวเก่าทิ้งถ้าซ้ำจริง
+                ตรวจดูรายการด้านล่าง ถ้าเป็นงานเดียวกันจริง กด "ลบเที่ยวเก่า" (เก็บเที่ยวที่แก้แล้วไว้)
                 <details style={{ marginTop: 8 }}>
                   <summary style={{ cursor: 'pointer' }}>ดูรายการ</summary>
                   <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 13 }}>
-                    {report.revised.slice(0, 30).map((v) => (
-                      <li key={v.existingJobId}>
-                        {fmtDateShort(v.date)} · {v.driverName} · {v.route ?? '—'} — ต่างที่{' '}
-                        {v.changed.join(', ')}
-                      </li>
-                    ))}
-                    {report.revised.length > 30 && (
-                      <li>… และอีก {fmtNum(report.revised.length - 30)} เที่ยว</li>
-                    )}
+                    {report.revised.map((v) => {
+                      const st = removed.get(v.existingJobId)
+                      return (
+                        <li key={v.existingJobId} style={{ marginBottom: 6 }}>
+                          {fmtDateShort(v.date)} · {v.driverName} · {v.route ?? '—'} — ต่างที่{' '}
+                          {v.changed.join(', ')}{' '}
+                          {st === 'done' ? (
+                            <span className="badge ok">ลบเที่ยวเก่าแล้ว</span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                disabled={st === 'busy'}
+                                onClick={() => void removeOldTrip(v.existingJobId)}
+                              >
+                                {st === 'busy' ? 'กำลังลบ…' : 'ลบเที่ยวเก่า'}
+                              </button>
+                              {st === 'err' && (
+                                <span className="badge bad" style={{ marginLeft: 6 }}>
+                                  ลบไม่สำเร็จ
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </details>
               </div>
