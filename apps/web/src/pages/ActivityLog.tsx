@@ -136,12 +136,14 @@ function Detail({ row }: { row: ActivityLogRow }) {
     // ไม่มีการกดออก และไม่เคยมี heartbeat ถึงฐานข้อมูลเลย (แถวก่อนแก้บั๊ก heartbeat ไม่ถูกส่ง)
     // ไม่รู้ระยะเวลาจริง — อย่าแสดงว่า "ไม่ถึงนาที" ซึ่งเป็นข้อมูลผิด
     // "ใช้งานล่าสุด" ก็จะเท่ากับเวลาเข้า ซึ่งชวนเข้าใจผิดเหมือนกัน — แสดงบรรทัดเดียวพอ
-    if (!logoutAt && seconds < 1) {
-      return <span className="muted" style={{ fontSize: 12.5 }}>ไม่มีข้อมูลเวลาออกและระยะเวลา</span>
-    }
     // แท็บยังเปิดอยู่ = heartbeat ล่าสุดยังสด (ทุก 60 วิ เผื่อเบราว์เซอร์หน่วงแท็บที่ซ่อนอยู่)
     // ไม่มี logout_at และ heartbeat หยุดไปแล้ว = ปิดแท็บ ณ last_seen_at (ยิง keepalive ตอนปิด)
     const online = !logoutAt && Date.now() - new Date(lastSeenAt).getTime() < 3 * 60_000
+    // เช็คหลัง online เสมอ — session ที่เพิ่งเปิดยังไม่ถึง heartbeat แรก (ภายใน 60 วิ) ก็มี
+    // last_seen_at = login_at เหมือนกัน แต่ต้องขึ้น "กำลังใช้งาน" ไม่ใช่ "ไม่มีข้อมูล"
+    if (!online && !logoutAt && seconds < 1) {
+      return <span className="muted" style={{ fontSize: 12.5 }}>ไม่มีข้อมูลเวลาออกและระยะเวลา</span>
+    }
     return (
       <>
         <span className="row" style={{ gap: 6 }}>
@@ -248,6 +250,12 @@ export default function ActivityLog() {
   const rows = data?.rows ?? []
   const total = data?.count ?? 0
   const pages = Math.ceil(total / PAGE_SIZE)
+
+  // เลขหน้าค้างอยู่ใน URL — ถ้าจำนวนแถวลดลง (เช่น ลบประวัติไปบางส่วน) หน้าที่เปิดอยู่อาจเลย
+  // หน้าสุดท้ายไปแล้ว ได้ตารางว่างทั้งที่ข้อมูลยังอยู่ — พากลับไปหน้าสุดท้ายที่มีจริง
+  useEffect(() => {
+    if (data && page > 0 && page >= pages) setPage(Math.max(0, pages - 1))
+  }, [data, page, pages])
 
   return (
     <main className="page">
