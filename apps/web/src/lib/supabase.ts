@@ -4,6 +4,10 @@ import { demoClient } from './demoClient'
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+/** ใช้ยิง fetch ตรงแบบ keepalive ตอนปิดแท็บ (sessionTracking.ts) — supabase-js ส่ง keepalive ไม่ได้ */
+export const SUPABASE_URL = url
+export const SUPABASE_ANON_KEY = anonKey
+
 /** โหมดทดลอง: อ่านข้อมูลจริงจากไฟล์ในเครื่อง ไม่ต้องมีฐานข้อมูล */
 export const IS_DEMO = import.meta.env.VITE_DEMO === '1'
 

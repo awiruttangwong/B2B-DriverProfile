@@ -133,18 +133,29 @@ function Detail({ row }: { row: ActivityLogRow }) {
     const endAt = logoutAt ?? lastSeenAt
     // แถวก่อน 0036 เวลาออกมาจากนาฬิกาเครื่องผู้ใช้ อาจเพี้ยนจนติดลบ — ไม่แสดงค่าติดลบ
     const seconds = Math.max(0, (new Date(endAt).getTime() - new Date(row.at).getTime()) / 1000)
+    // ไม่มีการกดออก และไม่เคยมี heartbeat ถึงฐานข้อมูลเลย (แถวก่อนแก้บั๊ก heartbeat ไม่ถูกส่ง)
+    // ไม่รู้ระยะเวลาจริง — อย่าแสดงว่า "ไม่ถึงนาที" ซึ่งเป็นข้อมูลผิด
+    // "ใช้งานล่าสุด" ก็จะเท่ากับเวลาเข้า ซึ่งชวนเข้าใจผิดเหมือนกัน — แสดงบรรทัดเดียวพอ
+    if (!logoutAt && seconds < 1) {
+      return <span className="muted" style={{ fontSize: 12.5 }}>ไม่มีข้อมูลเวลาออกและระยะเวลา</span>
+    }
+    // แท็บยังเปิดอยู่ = heartbeat ล่าสุดยังสด (ทุก 60 วิ เผื่อเบราว์เซอร์หน่วงแท็บที่ซ่อนอยู่)
+    // ไม่มี logout_at และ heartbeat หยุดไปแล้ว = ปิดแท็บ ณ last_seen_at (ยิง keepalive ตอนปิด)
+    const online = !logoutAt && Date.now() - new Date(lastSeenAt).getTime() < 3 * 60_000
     return (
       <>
         <span className="row" style={{ gap: 6 }}>
           <span className="muted" style={{ fontSize: 12.5 }}>
-            {logoutAt ? `ออกเมื่อ ${fmtDateTime(logoutAt)}` : `ใช้งานล่าสุด ${fmtDateTime(lastSeenAt)}`}
+            {logoutAt
+              ? `ออกจากระบบเมื่อ ${fmtDateTime(logoutAt)}`
+              : online
+                ? `ใช้งานล่าสุด ${fmtDateTime(lastSeenAt)}`
+                : `ปิดแท็บเมื่อ ${fmtDateTime(lastSeenAt)}`}
           </span>
-          {/* ไม่มีการกดออกจากระบบจริง — เวลาออกเป็นแค่ค่าประมาณจาก heartbeat ล่าสุด ไม่ใช่เวลา
-              ออกที่แน่นอน (ปิดแท็บ/เบราว์เซอร์ทิ้งเฉย ๆ ไม่มีทางรู้เวลาออกจริงได้) */}
-          {!logoutAt && <span className="badge warn">ประมาณ</span>}
+          {online && <span className="badge ok">กำลังใช้งาน</span>}
         </span>
         <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
-          อยู่ในระบบ {fmtDuration(seconds)}
+          {online ? 'อยู่ในระบบมาแล้ว' : 'อยู่ในระบบ'} {fmtDuration(seconds)}
         </div>
       </>
     )
