@@ -101,7 +101,7 @@ export default function StatusDialog({
     mutationFn: async () => {
       // ทริกเกอร์ในฐานข้อมูลจะบันทึกประวัติการเปลี่ยนให้เอง
       // แอปจึงเขียนแค่ตาราง drivers ตารางเดียว
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('drivers')
         .update({
           status: next,
@@ -109,7 +109,10 @@ export default function StatusDialog({
           status_until: computeStatusUntil(),
         })
         .eq('id', driverId)
+        .select('id')
       if (error) throw error
+      // RLS ที่ไม่ผ่านไม่ error แต่แก้ 0 แถวเงียบ ๆ — ต้องเช็คเอง ไม่งั้นขึ้นว่าบันทึกแล้วทั้งที่ไม่ได้เปลี่ยน
+      if (!data?.length) throw new Error('ไม่มีสิทธิ์เปลี่ยนสถานะ พขร. คนนี้ หรือไม่พบข้อมูล')
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['driver'] })

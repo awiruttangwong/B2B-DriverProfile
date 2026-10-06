@@ -1169,7 +1169,9 @@ input[type='password'] {
 }
 .split {
   display: grid;
-  grid-template-columns: 1fr;
+  /* minmax(0, …) ไม่ใช่ 1fr เฉย ๆ — 1fr มีขั้นต่ำเท่าเนื้อหา ตารางประวัติงานจึงดันคอลัมน์ให้กว้าง
+     เกินจอมือถือ ทั้งหน้าเลื่อนข้างได้ แทนที่ตารางจะเลื่อนข้างในกรอบ .tablewrap ของตัวเอง */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 @media (min-width: 1100px) {
@@ -2107,6 +2109,8 @@ th[aria-sort] .arrow {
     flex-basis: 100%;
     order: 3;
     margin: 4px 0 0;
+    /* ช่องเอกสารสองช่องกว้างรวมเกินจอมือถือ — ให้ขึ้นบรรทัดใหม่แทนการล้นจอ */
+    flex-wrap: wrap;
   }
 }
 
