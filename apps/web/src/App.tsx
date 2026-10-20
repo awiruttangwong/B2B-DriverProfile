@@ -321,8 +321,8 @@ function Shell() {
               <b>
                 <span className="accent">2K</span> Driver Profile
               </b>
+              {businessLine && <LineBadge line={businessLine} />}
             </span>
-            {businessLine && <LineBadge line={businessLine} />}
           </div>
 
           <NavLinks />
