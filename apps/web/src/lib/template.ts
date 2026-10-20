@@ -19,7 +19,7 @@ interface TemplateCol {
 
 const B2B_COLS: TemplateCol[] = [
   // ระบุฝั่งไว้ในไฟล์ — บัญชี EXPRESS อัปโหลดเทมเพลตนี้จะถูกปฏิเสธทุกแถว (และกลับกัน)
-  { header: 'ประเภท', width: 10, example: 'B2B' },
+  { header: 'ประเภท', width: 12, example: 'TRANSPORT' },
   { header: 'วันที่', width: 12, example: new Date() },
   { header: 'ลำดับงาน', width: 12, example: 'JB-0001' },
   { header: 'ลูกค้า', width: 20, example: 'บริษัท ตัวอย่าง จำกัด' },

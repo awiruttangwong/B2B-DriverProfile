@@ -19,6 +19,7 @@ import {
 } from './normalize'
 import type { ColumnMap, Field } from './sourceProfiles'
 import type { BusinessLine } from '../types/database'
+import { lineLabel, parseLine } from './lines'
 
 export type RawRow = Partial<Record<Field, unknown>>
 
@@ -167,9 +168,13 @@ function toDraft(
   if (!driverPhone) return { sheet, rowNo, reason: 'เบอร์โทร พขร. ไม่ครบ 9–10 หลัก' }
 
   // ฝั่งของงานมาจากบัญชีผู้อัปโหลดเสมอ คอลัมน์ "ประเภท" ในไฟล์ใช้แค่กันอัปโหลดผิดฝั่ง
-  const fileLine = normText(cell(cells, columns, 'segment'))?.toUpperCase()
-  if ((fileLine === 'B2B' || fileLine === 'EXPRESS') && fileLine !== line) {
-    return { sheet, rowNo, reason: `ไฟล์ระบุประเภทเป็น ${fileLine} แต่บัญชีนี้เป็นฝั่ง ${line}` }
+  const fileLine = parseLine(normText(cell(cells, columns, 'segment')))
+  if (fileLine && fileLine !== line) {
+    return {
+      sheet,
+      rowNo,
+      reason: `ไฟล์ระบุประเภทเป็น ${lineLabel(fileLine)} แต่บัญชีนี้เป็นฝั่ง ${lineLabel(line)}`,
+    }
   }
   const routeCode = normText(cell(cells, columns, 'routeCode'))
 
