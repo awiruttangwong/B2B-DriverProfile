@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './lib/auth'
 import { IS_DEMO, supabase } from './lib/supabase'
 import { roleLabel, fmtNum } from './lib/format'
+import LineBadge from './components/LineBadge'
 import {
   IconBan,
   IconClock,
@@ -247,7 +248,18 @@ function BootScreen() {
 }
 
 function Shell() {
-  const { session, profile, loading, canSeeActivityLog, signOut } = useAuth()
+  const { session, profile, loading, canSeeActivityLog, signOut, businessLine } = useAuth()
+
+  // เปลี่ยนบัญชีในแท็บเดิม (ออกแล้วเข้าด้วยบัญชีอื่น) ต้องล้างแคชข้อมูลทิ้งทั้งหมด — แคชถูกเก็บด้วย
+  // key ที่ไม่มีตัวผู้ใช้ เช่น ['customers'] ไม่ล้างจะเห็นข้อมูลของบัญชีก่อนหน้า (อาจเป็นอีกฝั่ง)
+  // จนกว่าแคชจะหมดอายุ ฐานข้อมูลไม่ได้ส่งข้อมูลข้ามฝั่งให้ แต่ของที่ค้างในเครื่องก็ต้องไม่โชว์
+  const qc = useQueryClient()
+  const uid = session?.user?.id
+  const lastUid = useRef(uid)
+  useEffect(() => {
+    if (lastUid.current !== uid) qc.clear()
+    lastUid.current = uid
+  }, [uid, qc])
 
   // ซ่อมแถว พขร. ที่พ้นกำหนดพักงานแล้วให้กลับเป็น "ใช้งาน" จริง ๆ ในตาราง (ไม่ใช่แค่
   // คำนวณสดตอน query) ครั้งเดียวตอนเข้าแอป — fire-and-forget ไม่บล็อกหน้าจอ ไม่ต้อง
@@ -310,6 +322,7 @@ function Shell() {
                 <span className="accent">2K</span> Driver Profile
               </b>
             </span>
+            {businessLine && <LineBadge line={businessLine} />}
           </div>
 
           <NavLinks />
@@ -347,6 +360,7 @@ function Shell() {
           <header className="topbar">
             <div className="brand-mark" style={{ padding: 0 }}>
               <img className="logo" src="/logo-sidebar.png" alt="" aria-hidden="true" />
+              {businessLine && <LineBadge line={businessLine} />}
             </div>
             <NavLinks />
           </header>

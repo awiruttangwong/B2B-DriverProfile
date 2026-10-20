@@ -11,6 +11,7 @@
 import { supabase } from './supabase'
 import { canonCustomer, detUuid, isSamePerson, rowHash } from './normalize'
 import type { CleanRow, InvalidRow } from './cleaning'
+import type { BusinessLine } from '../types/database'
 
 export type {
   CleanResult,
@@ -90,6 +91,7 @@ const MAX_OCCURRENCE = 50
  */
 export async function nextOccurrence(r: CleanRow): Promise<{ existing: number; hash: string }> {
   const parts = {
+    segment: r.segment,
     date: r.date,
     customer: r.customer,
     plate: r.plate,
@@ -115,6 +117,11 @@ export async function ingestRows(
     filename: 'manual',
   },
 ): Promise<IngestReport> {
+  // ทุกแถวมาจาก cleanSheets(…, line) ของบัญชีเดียวกัน จึงเป็นฝั่งเดียวกันเสมอ — ถ้าไม่ใช่คือบั๊ก
+  // ต้องหยุดก่อนเขียนอะไรลงฐานข้อมูล (ฐานข้อมูลก็ปฏิเสธแถวผิดฝั่งอยู่แล้ว นี่คือกันชั้นแรก)
+  const line = (rows[0]?.segment ?? 'B2B') as BusinessLine
+  if (rows.some((r) => r.segment !== line)) throw new Error('ข้อมูลปนกันหลายฝั่งในชุดเดียว')
+
   const report: IngestReport = {
     totalRows: rows.length,
     invalidRows: [],
@@ -154,12 +161,14 @@ export async function ingestRows(
   const vtypeCodes = [...new Set(unique.map((r) => r.vehicleType).filter(Boolean))] as string[]
   const plates = [...new Set(unique.map((r) => r.plate).filter(Boolean))] as string[]
 
+  // ลูกค้า/ประเภทรถ/ทะเบียนรถ แยกตามฝั่ง (0039 ส่วนที่ 4) — FLASH ของ B2B กับของ EXPRESS คนละแถว
   const customerIds = await upsertLookup(
     'customers',
     customerCodes,
     'customer',
     report,
     'customersCreated',
+    line,
   )
   const vtypeIds = await upsertLookup(
     'vehicle_types',
@@ -167,6 +176,7 @@ export async function ingestRows(
     'vtype',
     report,
     'vehicleTypesCreated',
+    line,
   )
 
   // ---------------------------------------------------------------- รถ
@@ -179,19 +189,29 @@ export async function ingestRows(
   const existingVehicles = await fetchExisting('vehicles', 'plate', plates)
   const vehicleIds = new Map<string, string>(existingVehicles.map((v) => [v.key, v.id]))
 
-  const newVehicles: { id: string; plate: string; vehicle_type_id: string | null }[] = []
+  const newVehicles: {
+    id: string
+    business_line: BusinessLine
+    plate: string
+    vehicle_type_id: string | null
+  }[] = []
   for (const p of plates) {
     if (vehicleIds.has(p)) continue
-    const id = await detUuid('vehicle', p)
+    const id = await detUuid('vehicle', lineKey(line, p))
     const vt = plateType.get(p)
-    newVehicles.push({ id, plate: p, vehicle_type_id: (vt && vtypeIds.get(vt)) || null })
+    newVehicles.push({
+      id,
+      business_line: line,
+      plate: p,
+      vehicle_type_id: (vt && vtypeIds.get(vt)) || null,
+    })
     vehicleIds.set(p, id)
   }
   if (newVehicles.length) {
     for (const part of chunk(newVehicles)) {
       const { error } = await supabase
         .from('vehicles')
-        .upsert(part, { onConflict: 'plate', ignoreDuplicates: true })
+        .upsert(part, { onConflict: 'business_line,plate', ignoreDuplicates: true })
       if (error) report.errors.push(`ทะเบียนรถ: ${error.message}`)
     }
     report.vehiclesCreated = newVehicles.length
@@ -199,7 +219,7 @@ export async function ingestRows(
 
   // -------------------------------------------------------------- พขร.
   say(30, 'จับคู่ตัวตน พขร.')
-  const driverIds = await resolveDrivers(unique, report)
+  const driverIds = await resolveDrivers(unique, line, report)
 
   // ------------------------------------------------------ บัญชีธนาคาร พขร.
   // ทำก่อนเช็คงานซ้ำโดยตั้งใจ — ต้องอัปเดตเลขบัญชีให้ทันแม้ทุกเที่ยวในไฟล์
@@ -237,6 +257,7 @@ export async function ingestRows(
     .insert({
       filename: opts.filename,
       sheet_name: opts.sheetName ?? null,
+      business_line: line,
       row_total: rows.length,
       status: 'running',
     })
@@ -256,6 +277,7 @@ export async function ingestRows(
       vehicle_type_id: (r.vehicleType && vtypeIds.get(r.vehicleType)) || null,
       vehicle_id: (r.plate && vehicleIds.get(r.plate)) || null,
       route_raw: r.route,
+      route_code: r.routeCode,
       origin: r.origin,
       destination: r.destination,
       revenue: r.revenue,
@@ -278,7 +300,7 @@ export async function ingestRows(
     // ถูก ignore ไม่ถูกนับ ตัวเลข "บันทึกใหม่" จึงตรงกับฐานข้อมูลจริง
     const { data, error } = await supabase
       .from('jobs')
-      .upsert(part, { onConflict: 'row_hash', ignoreDuplicates: true })
+      .upsert(part, { onConflict: 'segment,row_hash', ignoreDuplicates: true })
       .select('id')
     if (error) {
       report.errors.push(`บันทึกงาน: ${error.message}`)
@@ -331,6 +353,12 @@ export async function ingestRows(
 }
 
 // ------------------------------------------------------------------ helpers
+
+/** key ของ id แบบกำหนดได้ (detUuid) — B2B ใช้ key เดิม (id เดิมทุกตัว) ฝั่งอื่นเติมชื่อฝั่งนำหน้า
+ *  ของสองฝั่งที่ชื่อ/เบอร์/ทะเบียนเหมือนกันจึงได้ id คนละตัว ไม่ชนกัน */
+function lineKey(line: BusinessLine, key: string) {
+  return line === 'B2B' ? key : `${line}|${key}`
+}
 
 function driverKey(phone: string, name: string) {
   return `${phone}|${name}`
@@ -467,6 +495,8 @@ async function upsertLookup(
   uuidKind: string,
   report: IngestReport,
   counter: 'customersCreated' | 'vehicleTypesCreated' | null,
+  /** ตารางที่แยกฝั่ง (ลูกค้า/ประเภทรถ) ต้องระบุ — banks เป็นรายการกลาง ไม่ระบุ */
+  line?: BusinessLine,
 ): Promise<Map<string, string>> {
   const existing = await fetchExisting(table, 'code', codes)
   const map = new Map<string, string>(existing.map((e) => [e.key, e.id]))
@@ -475,12 +505,18 @@ async function upsertLookup(
   if (missing.length === 0) return map
 
   const rows = await Promise.all(
-    missing.map(async (code) => ({ id: await detUuid(uuidKind, code), code, name: code })),
+    missing.map(async (code) => ({
+      id: await detUuid(uuidKind, line ? lineKey(line, code) : code),
+      code,
+      name: code,
+      // ต้องส่งเอง — insert หลายแถวผ่าน supabase-js ใส่ null ให้คอลัมน์ที่ไม่ระบุ ค่า default ไม่ทำงาน
+      ...(line ? { business_line: line } : {}),
+    })),
   )
   for (const part of chunk(rows)) {
     const { error } = await supabase
       .from(table)
-      .upsert(part, { onConflict: 'code', ignoreDuplicates: true })
+      .upsert(part, { onConflict: line ? 'business_line,code' : 'code', ignoreDuplicates: true })
     if (error) report.errors.push(`${table}: ${error.message}`)
   }
   for (const r of rows) map.set(r.code, r.id)
@@ -497,6 +533,7 @@ async function upsertLookup(
  */
 async function resolveDrivers(
   rows: CleanRow[],
+  line: BusinessLine,
   report: IngestReport,
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>()
@@ -532,6 +569,7 @@ async function resolveDrivers(
 
   const toCreate: {
     id: string
+    business_line: BusinessLine
     full_name: string
     phone: string
     first_job_date: string
@@ -561,10 +599,13 @@ async function resolveDrivers(
       continue
     }
 
-    const id = await detUuid('driver', `${phone}|${name}`)
+    // คนเดียวกันมีได้ฝั่งละโปรไฟล์ — id ของ EXPRESS ต้องไม่ชนกับ B2B (B2B ได้ค่าเดิมทุกตัว)
+    const id = await detUuid('driver', lineKey(line, `${phone}|${name}`))
     const range = dates.get(key)!
     toCreate.push({
       id,
+      // ต้องส่งเอง — insert หลายแถวผ่าน supabase-js ใส่ null ให้คอลัมน์ที่ไม่ระบุ ค่า default ไม่ทำงาน
+      business_line: line,
       full_name: name,
       phone,
       first_job_date: range.first,
@@ -579,7 +620,7 @@ async function resolveDrivers(
     for (const part of chunk(toCreate)) {
       const { error } = await supabase
         .from('drivers')
-        .upsert(part, { onConflict: 'phone,full_name', ignoreDuplicates: true })
+        .upsert(part, { onConflict: 'business_line,phone,full_name', ignoreDuplicates: true })
       if (error) report.errors.push(`สร้าง พขร.: ${error.message}`)
     }
     report.driversCreated = toCreate.length

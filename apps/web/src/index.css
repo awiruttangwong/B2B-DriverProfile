@@ -16,6 +16,10 @@
   --brand-strong: #0a6fa8;
   --brand-deep: #075e8f;
   --brand-soft: #e9f7ff;
+  /* ป้ายฝั่ง EXPRESS — สีม่วง แยกขาดจากสีหลัก (ฟ้า = B2B) และจากสีสถานะ เขียว/เหลือง/แดง */
+  --express: #6d28d9;
+  --express-soft: #f3edff;
+  --express-line: #cdb8f5;
   --brand-line: #b9e2f8;
   --meter-track: #c9e7fa;
 
@@ -115,6 +119,9 @@
     --brand-strong: #7fcdf8;
     --brand-deep: #aadffc;
     --brand-soft: #0e2c44;
+    --express: #c4a8ff;
+    --express-soft: #2a1d4a;
+    --express-line: #5b449a;
     --brand-line: #1f5477;
     --meter-track: #12344d;
 
@@ -170,6 +177,9 @@
   --brand-strong: #7fcdf8;
   --brand-deep: #aadffc;
   --brand-soft: #0e2c44;
+  --express: #c4a8ff;
+  --express-soft: #2a1d4a;
+  --express-line: #5b449a;
   --brand-line: #1f5477;
   --meter-track: #12344d;
 
@@ -2565,4 +2575,24 @@ fieldset.fs > legend {
 }
 .calc .c-val.pos {
   color: var(--good);
+}
+
+/* ป้ายฝั่งธุรกิจ (B2B / EXPRESS) — โชว์ตลอดเวลาที่เมนู ให้รู้เสมอว่ากำลังทำงานกับข้อมูลฝั่งไหน */
+.line-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--brand-line);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  white-space: nowrap;
+}
+.line-badge.express {
+  border-color: var(--express-line);
+  background: var(--express-soft);
+  color: var(--express);
 }

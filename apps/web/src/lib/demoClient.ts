@@ -540,6 +540,9 @@ writes.set('profiles', [
     full_name: 'ผู้ใช้ทดลอง',
     email: DEMO_USER.email,
     role: 'admin',
+    // ทดสอบหน้าตาฝั่ง EXPRESS ได้ด้วย VITE_DEMO_LINE=EXPRESS (ข้อมูลทดลองยังเป็นชุดเดียวกัน —
+    // โหมดทดลองไม่มี RLS แยกฝั่งให้ ใช้ดูหน้าจอ/เทมเพลต/การทำความสะอาดไฟล์เท่านั้น)
+    business_line: import.meta.env.VITE_DEMO_LINE === 'EXPRESS' ? 'EXPRESS' : 'B2B',
     department: null,
     is_active: true,
     created_at: new Date().toISOString(),

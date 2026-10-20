@@ -23,7 +23,7 @@ const EMPTY = {
 }
 
 export default function NewJob() {
-  const { can, loading: authLoading } = useAuth()
+  const { can, loading: authLoading, businessLine } = useAuth()
   const qc = useQueryClient()
   const [form, setForm] = useState({ ...EMPTY })
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -38,7 +38,9 @@ export default function NewJob() {
     setRepeat(null)
   }, [form])
 
-  const allowed = can('admin', 'hr', 'ops')
+  // ต้องรู้ฝั่งของบัญชีก่อนเสมอ — งานถูกตีตราด้วยฝั่งนี้ (ห้ามเดา)
+  const allowed = can('admin', 'hr', 'ops') && businessLine !== null
+  const isExpress = businessLine === 'EXPRESS'
 
   const customers = useQuery({
     queryKey: ['customers'],
@@ -82,13 +84,42 @@ export default function NewJob() {
     },
   })
 
+  // ตารางลูกค้า/ประเภทรถใช้ร่วมทั้งสองฝั่ง — แนะนำเฉพาะที่ฝั่งตัวเองเคยมีงาน (มาจาก jobs ซึ่งฐานข้อมูล
+  // แยกฝั่งให้แล้ว) ยังพิมพ์ค่าใหม่เองได้ตามเดิม ใช้ key เดียวกับหน้าหา พขร. จึงใช้แคชร่วมกัน
+  const pairs = useQuery({
+    queryKey: ['job-customer-vehicle-pairs'],
+    staleTime: 30 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_customer_vehicle_pairs')
+        .select('*')
+        .limit(5000)
+      if (error) throw error
+      return (data ?? []) as { customer_code: string; vehicle_type_code: string }[]
+    },
+  })
+  const ownCustomers = useMemo(
+    () => (pairs.data?.length ? new Set(pairs.data.map((p) => p.customer_code)) : null),
+    [pairs.data],
+  )
+  const ownVehicleTypes = useMemo(
+    () => (pairs.data?.length ? new Set(pairs.data.map((p) => p.vehicle_type_code)) : null),
+    [pairs.data],
+  )
+
   const customerOpts: ComboOption[] = useMemo(
-    () => (customers.data ?? []).map((c) => ({ value: c.code, label: c.code })),
-    [customers.data],
+    () =>
+      (customers.data ?? [])
+        .filter((c) => !ownCustomers || ownCustomers.has(c.code))
+        .map((c) => ({ value: c.code, label: c.code })),
+    [customers.data, ownCustomers],
   )
   const vtOpts: ComboOption[] = useMemo(
-    () => (vehicleTypes.data ?? []).map((v) => ({ value: v.code, label: v.code, hint: v.name ?? undefined })),
-    [vehicleTypes.data],
+    () =>
+      (vehicleTypes.data ?? [])
+        .filter((v) => !ownVehicleTypes || ownVehicleTypes.has(v.code))
+        .map((v) => ({ value: v.code, label: v.code, hint: v.name ?? undefined })),
+    [vehicleTypes.data, ownVehicleTypes],
   )
 
   // ---------------------------------------------- คำนวณสด
@@ -128,19 +159,19 @@ export default function NewJob() {
       // และการกันซ้ำจึงเป็นชุดเดียวกันไม่ว่าข้อมูลจะเข้ามาทางไหน
       const raw: RawRow = {
         date: form.date,
-        segment: 'B2B',
         customer: form.customer,
         vehicleType: form.vehicleType,
         plate: form.plate,
         driverName: form.driverName,
         driverPhone: form.driverPhone,
         route: form.route,
-        revenue: form.revenue,
-        cost: form.cost,
+        revenue: isExpress ? '' : form.revenue,
+        cost: isExpress ? '' : form.cost,
         note: form.note,
       }
 
-      const { rows, invalid } = await cleanManualRow(raw)
+      if (!businessLine) return
+      const { rows, invalid } = await cleanManualRow(raw, businessLine)
       if (invalid.length > 0 || rows.length === 0) {
         setMsg({ kind: 'err', text: invalid[0]?.reason ?? 'ข้อมูลไม่ครบ' })
         return
@@ -365,7 +396,10 @@ export default function NewJob() {
 
         {/* ------------------------------------------------ ราคา */}
         <fieldset className="fs">
-          <legend>ค่าขนส่ง</legend>
+          <legend>{isExpress ? 'หมายเหตุ' : 'ค่าขนส่ง'}</legend>
+          {/* ไฟล์และงานของฝั่ง EXPRESS ไม่มีราคา — ไม่ต้องให้กรอก (ส่งค่าว่างไปเสมอ) */}
+          {!isExpress && (
+            <>
           <div className="grid grid-2">
             <div className="field">
               <label htmlFor="rv">ราคารับ (บาท)</label>
@@ -425,6 +459,8 @@ export default function NewJob() {
             </div>
           )}
 
+            </>
+          )}
           <div className="field">
             <label htmlFor="nt">หมายเหตุ</label>
             <input

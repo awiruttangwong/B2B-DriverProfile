@@ -18,6 +18,7 @@ import {
   splitRoute,
 } from './normalize'
 import type { ColumnMap, Field } from './sourceProfiles'
+import type { BusinessLine } from '../types/database'
 
 export type RawRow = Partial<Record<Field, unknown>>
 
@@ -42,6 +43,8 @@ export interface CleanRow {
   driverName: string
   driverPhone: string
   route: string | null
+  /** รหัสเส้นทาง (EXPRESS) — เก็บแยก ไม่เข้า hash */
+  routeCode: string | null
   origin: string | null
   destination: string | null
   accountName: string | null
@@ -120,6 +123,7 @@ interface Draft {
   driverName: string
   driverPhone: string
   route: string | null
+  routeCode: string | null
   accountName: string | null
   accountNo: string | null
   bank: string | null
@@ -152,6 +156,7 @@ function toDraft(
   rowNo: number,
   cells: unknown[],
   columns: ColumnMap,
+  line: BusinessLine,
 ): Draft | InvalidRow {
   const date = normDate(cell(cells, columns, 'date'))
   const driverName = normText(cell(cells, columns, 'driverName'))
@@ -161,6 +166,13 @@ function toDraft(
   if (!driverName) return { sheet, rowNo, reason: 'ไม่มีชื่อ พขร.' }
   if (!driverPhone) return { sheet, rowNo, reason: 'เบอร์โทร พขร. ไม่ครบ 9–10 หลัก' }
 
+  // ฝั่งของงานมาจากบัญชีผู้อัปโหลดเสมอ คอลัมน์ "ประเภท" ในไฟล์ใช้แค่กันอัปโหลดผิดฝั่ง
+  const fileLine = normText(cell(cells, columns, 'segment'))?.toUpperCase()
+  if ((fileLine === 'B2B' || fileLine === 'EXPRESS') && fileLine !== line) {
+    return { sheet, rowNo, reason: `ไฟล์ระบุประเภทเป็น ${fileLine} แต่บัญชีนี้เป็นฝั่ง ${line}` }
+  }
+  const routeCode = normText(cell(cells, columns, 'routeCode'))
+
   const rawAcct = cell(cells, columns, 'accountNo')
 
   const d: Draft = {
@@ -169,13 +181,15 @@ function toDraft(
     date,
     // ลำดับงานอาจมาเป็น 13 หรือ 13.0 แล้วแต่ว่า Excel เก็บเป็นเลขหรือข้อความ
     seq: normText(cell(cells, columns, 'seq'))?.replace(/\.0$/, '') ?? null,
-    segment: normText(cell(cells, columns, 'segment')) ?? 'B2B',
+    segment: line,
     customer: normCode(cell(cells, columns, 'customer')),
     vehicleType: normText(cell(cells, columns, 'vehicleType')),
     plate: normPlate(cell(cells, columns, 'plate')),
     driverName,
     driverPhone,
-    route: normText(cell(cells, columns, 'route')),
+    // "เส้นทาง (Route)" ว่างบางแถวในไฟล์ EXPRESS — ใช้รหัสเส้นทางแทน (B2B ไม่มีคอลัมน์รหัส จึงไม่เปลี่ยน)
+    route: normText(cell(cells, columns, 'route')) ?? routeCode,
+    routeCode,
     accountName: normText(cell(cells, columns, 'accountName')),
     accountNo: normText(
       rawAcct === null || rawAcct === undefined ? null : String(rawAcct).split('.')[0],
@@ -224,13 +238,16 @@ function isInvalid(x: Draft | InvalidRow): x is InvalidRow {
  * ผลกับไฟล์จริง: จาก 8,010 แถวที่ใช้ได้ เหลือ 7,556 เที่ยว โดยที่ทุกชีตให้
  * จำนวนเที่ยวตรงกันหมด (ไม่มีคีย์ไหนที่ชีตนับไม่ตรงกันเลย)
  */
-export async function cleanSheets(sheets: SourceSheet[]): Promise<CleanResult> {
+export async function cleanSheets(
+  sheets: SourceSheet[],
+  line: BusinessLine,
+): Promise<CleanResult> {
   const invalid: InvalidRow[] = []
   const drafts: Draft[] = []
 
   for (const s of sheets) {
     for (const r of s.rows) {
-      const d = toDraft(s.name, r.rowNo, r.cells, s.columns)
+      const d = toDraft(s.name, r.rowNo, r.cells, s.columns, line)
       if (isInvalid(d)) invalid.push(d)
       else drafts.push(d)
     }
@@ -306,6 +323,7 @@ export async function cleanSheets(sheets: SourceSheet[]): Promise<CleanResult> {
         driverName: d.driverName,
         driverPhone: d.driverPhone,
         route: d.route,
+        routeCode: d.routeCode,
         origin,
         destination,
         accountName: d.accountName,
@@ -321,6 +339,7 @@ export async function cleanSheets(sheets: SourceSheet[]): Promise<CleanResult> {
         withholding: d.withholding,
         hash: await rowHash(
           {
+            segment: d.segment,
             date: d.date,
             customer: d.customer,
             plate: d.plate,
@@ -370,6 +389,7 @@ export async function cleanSheets(sheets: SourceSheet[]): Promise<CleanResult> {
 /** ทางลัดสำหรับหน้ากรอกทีละงาน — หนึ่งแถว หนึ่งฟิลด์ต่อหนึ่งค่า */
 export async function cleanManualRow(
   values: RawRow,
+  line: BusinessLine,
 ): Promise<{ rows: CleanRow[]; invalid: InvalidRow[] }> {
   const fields = Object.keys(values) as Field[]
   const columns: ColumnMap = {}
@@ -378,9 +398,10 @@ export async function cleanManualRow(
     columns[f] = i
     cells[i] = values[f] ?? null
   })
-  const { rows, invalid } = await cleanSheets([
-    { name: 'กรอกด้วยมือ', columns, rows: [{ rowNo: 1, cells }] },
-  ])
+  const { rows, invalid } = await cleanSheets(
+    [{ name: 'กรอกด้วยมือ', columns, rows: [{ rowNo: 1, cells }] }],
+    line,
+  )
   return { rows, invalid }
 }
 

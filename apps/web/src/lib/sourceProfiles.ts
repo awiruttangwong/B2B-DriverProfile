@@ -26,6 +26,7 @@ export type Field =
   | 'driverName'
   | 'driverPhone'
   | 'route'
+  | 'routeCode'
   | 'accountName'
   | 'accountNo'
   | 'bank'
@@ -51,6 +52,7 @@ export const FIELD_LABEL: Record<Field, string> = {
   driverName: 'ชื่อ พขร.',
   driverPhone: 'เบอร์โทร พขร.',
   route: 'เส้นทาง',
+  routeCode: 'รหัสเส้นทาง',
   accountName: 'ชื่อผู้รับโอน',
   accountNo: 'เลขบัญชี',
   bank: 'ธนาคาร',
@@ -99,6 +101,9 @@ const ALIASES: Record<Field, string[]> = {
   driverName: ['ชื่อพขร', 'ชื่อคนขับ', 'ชื่อพนักงานขับรถ'],
   driverPhone: ['เบอร์โทรพขร', 'เบอร์โทรคนขับ', 'เบอร์โทร', 'เบอร์โทรศัพท์'],
   route: ['เส้นทาง(route)', 'เส้นทาง/ดรอป/จำนวนลัง', 'เส้นทาง', 'route'],
+  // รหัสเส้นทางของ EXPRESS เช่น AYA-PLK (กรอกครบทุกแถว ต่างจาก "เส้นทาง (Route)" ที่ว่างบางแถว)
+  // ตรงตัวเท่านั้น — ไฟล์ B2B มี "ชื่อเส้นทาง (JOB ID)" ซึ่งเป็นคนละอย่าง ห้ามคว้ามา
+  routeCode: ['ชื่อเส้นทาง'],
   accountName: ['ชื่อผู้รับโอน', 'ชื่อผุ้รับโอน'],
   accountNo: ['เลขบัญชี'],
   bank: ['ธนาคาร'],

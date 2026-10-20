@@ -12,11 +12,15 @@ export type DriverStatus = 'active' | 'probation' | 'inactive' | 'blacklisted'
 export type EmploymentType = 'employee' | 'contractor' | 'vendor' | 'unknown'
 export type JobOutcome = 'completed' | 'no_show' | 'cancelled' | 'incident'
 
+/** ฝั่งธุรกิจ — บัญชีผู้ใช้, พขร. และงานทุกแถวอยู่ฝั่งเดียว ฐานข้อมูลบังคับแยกเด็ดขาด (0039) */
+export type BusinessLine = 'B2B' | 'EXPRESS'
+
 export interface Profile {
   id: string
   full_name: string
   email: string | null
   role: AppRole
+  business_line: BusinessLine
   department: string | null
   is_active: boolean
   created_at: string

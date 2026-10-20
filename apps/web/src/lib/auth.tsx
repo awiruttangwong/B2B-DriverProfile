@@ -9,7 +9,7 @@ import {
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { useSessionTracking } from './sessionTracking'
-import type { AppRole, Profile } from '../types/database'
+import type { AppRole, BusinessLine, Profile } from '../types/database'
 
 // ต้องตรงกับ allowlist ใน supabase/migrations/0021_activity_log_allowlist.sql เป๊ะ
 // (ฝั่งนี้แค่ซ่อนเมนู ตัวบังคับจริงอยู่ที่ view ชั้นเดียวกันกับที่นั่น)
@@ -27,6 +27,9 @@ interface AuthState {
   can: (...roles: AppRole[]) => boolean
   /** บันทึกกิจกรรมจำกัดเฉพาะ 3 อีเมล ไม่ผูกกับ role — แยกจาก can() เพราะเช็คคนละแบบ */
   canSeeActivityLog: boolean
+  /** ฝั่งของบัญชี — null ระหว่างยังโหลด profile ไม่เสร็จ (ห้ามเดาเป็น B2B: งานที่บันทึกตอนนั้น
+   *  จะถูกตีตราผิดฝั่ง ฐานข้อมูลปฏิเสธอยู่ดี แต่ไม่ควรให้ไปถึงตรงนั้น) */
+  businessLine: BusinessLine | null
   signOut: () => Promise<void>
 }
 
@@ -105,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       can: (...roles) => (profile ? roles.includes(profile.role) : false),
       canSeeActivityLog: !!profile?.email && ACTIVITY_LOG_EMAILS.includes(profile.email.toLowerCase()),
+      businessLine: profile?.business_line ?? null,
       signOut: async () => {
         // บันทึก logout_at ก่อนตัด session จริง — ได้เวลาออกที่แม่นยำสำหรับคนที่กดออกเองจริง ๆ
         // (ทำก่อน signOut เสมอ เพราะ signOut แล้ว session หาย ไม่มีสิทธิ์ update แถวตัวเองอีก)

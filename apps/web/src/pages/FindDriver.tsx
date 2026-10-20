@@ -256,7 +256,11 @@ export default function FindDriver() {
       narrowByPairs && vehicleType && pairs.data?.length
         ? new Set(pairs.data.filter((p) => p.vehicle_type_code === vehicleType).map((p) => p.customer_code))
         : null
+    // ตารางลูกค้าใช้ร่วมกันทั้งสองฝั่ง — เหลือเฉพาะลูกค้าที่ฝั่งตัวเองเคยมีงาน (pairs มาจาก jobs ซึ่ง
+    // ฐานข้อมูลแยกฝั่งให้แล้ว) ไม่งั้นฝั่ง B2B จะเห็นลูกค้าของ EXPRESS ในรายการและกลับกัน
+    const ownLine = pairs.data?.length ? new Set(pairs.data.map((p) => p.customer_code)) : null
     return (customers.data ?? [])
+      .filter((c) => !ownLine || ownLine.has(c.code))
       .filter((c) => !allowed || allowed.has(c.code))
       .map((c) => ({ value: c.code, label: c.code }))
   }, [customers.data, pairs.data, vehicleType, narrowByPairs])
@@ -275,7 +279,8 @@ export default function FindDriver() {
       }
       return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
     }
-    return (vehicleTypes.data ?? []).map((v) => ({
+    const ownLine = pairs.data?.length ? new Set(pairs.data.map((p) => p.vehicle_type_code)) : null
+    return (vehicleTypes.data ?? []).filter((v) => !ownLine || ownLine.has(v.code)).map((v) => ({
       value: v.code,
       label: v.code,
       hint: v.name ?? undefined,

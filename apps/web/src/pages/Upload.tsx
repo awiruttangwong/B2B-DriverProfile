@@ -20,6 +20,7 @@ import {
   type SheetScan,
 } from '../lib/sourceProfiles'
 import { downloadJobTemplate } from '../lib/template'
+import LineBadge from '../components/LineBadge'
 import type { WorkerResult } from '../lib/xlsxWorker'
 import { fmtDateShort, fmtMoney, fmtNum } from '../lib/format'
 import { canonCustomer } from '../lib/normalize'
@@ -46,7 +47,7 @@ const SHOWN_FIELDS: Field[] = [
 ]
 
 export default function Upload() {
-  const { can, loading: authLoading } = useAuth()
+  const { can, loading: authLoading, businessLine } = useAuth()
   const qc = useQueryClient()
   const [stage, setStage] = useState<Stage>('idle')
   const [filename, setFilename] = useState('')
@@ -76,7 +77,8 @@ export default function Upload() {
   const [templateBusy, setTemplateBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const allowed = can('admin', 'hr', 'ops')
+  // ต้องรู้ฝั่งของบัญชีก่อนเสมอ — งานทุกแถวถูกตีตราด้วยฝั่งนี้ (ห้ามเดา)
+  const allowed = can('admin', 'hr', 'ops') && businessLine !== null
 
   function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -93,9 +95,10 @@ export default function Upload() {
   }
 
   async function handleTemplateDownload() {
+    if (!businessLine) return
     setTemplateBusy(true)
     try {
-      await downloadJobTemplate()
+      await downloadJobTemplate(businessLine)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -209,7 +212,7 @@ export default function Upload() {
       const sheets: SourceSheet[] = scanList
         .filter((s) => next.has(s.name) && s.status === 'ok')
         .map((s) => ({ name: s.name, columns: s.columns, rows: s.rows }))
-      setClean(sheets.length ? await cleanSheets(sheets) : null)
+      setClean(sheets.length && businessLine ? await cleanSheets(sheets, businessLine) : null)
     } finally {
       setBusy(false)
     }
@@ -266,6 +269,13 @@ export default function Upload() {
 
   const rows: CleanRow[] = clean?.rows ?? []
 
+  // เหตุผลที่แถวไม่ผ่าน รวมเป็นกลุ่มพร้อมจำนวน — เรียงจากมากไปน้อย
+  const invalidReasons = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const v of clean?.invalid ?? []) counts.set(v.reason, (counts.get(v.reason) ?? 0) + 1)
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }, [clean])
+
   return (
     <main className="page">
       <div className="page-head">
@@ -275,6 +285,12 @@ export default function Upload() {
             อัปโหลดไฟล์ เที่ยวที่เคยนำเข้าไปแล้วจะถูกข้ามให้เองเสมอ ไม่ทำให้ข้อมูลซ้ำ
             ส่วนหัวตารางระบบตรวจจับให้อัตโนมัติ
           </p>
+          {businessLine && (
+            <p style={{ marginTop: 6 }}>
+              งานทุกเที่ยวในไฟล์จะถูกบันทึกเป็นงานฝั่ง <LineBadge line={businessLine} /> — แถวที่ไฟล์ระบุ
+              ประเภทเป็นอีกฝั่งจะไม่ถูกนำเข้า
+            </p>
+          )}
         </div>
       </div>
 
@@ -457,6 +473,20 @@ export default function Upload() {
             </div>
           )}
 
+          {/* ทุกแถวไม่ผ่าน (เช่น บัญชี B2B อัปโหลดไฟล์ EXPRESS) — เดิมหน้าจอเงียบไปเฉย ๆ ไม่บอกอะไรเลย */}
+          {clean && !summary && (
+            <div className="note-box err" style={{ marginBottom: 18 }}>
+              <strong>ไม่มีแถวที่นำเข้าได้</strong> — ทั้ง {fmtNum(clean.invalid.length)} แถวไม่ผ่าน
+              <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+                {invalidReasons.map(([reason, n]) => (
+                  <li key={reason}>
+                    {reason} — {fmtNum(n)} แถว
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {clean && summary && (
             <>
               <div className="card" style={{ marginBottom: 18 }}>
@@ -540,8 +570,15 @@ export default function Upload() {
 
                   {clean.invalid.length > 0 && (
                     <div className="note-box" style={{ marginTop: 12 }}>
-                      <strong>ข้าม {fmtNum(clean.invalid.length)} แถว</strong> เพราะขาดวันที่ ชื่อ
-                      หรือเบอร์โทร พขร. — แถวเหล่านี้จะไม่ถูกนำเข้า ส่วนที่เหลือนำเข้าได้ตามปกติ
+                      <strong>ข้าม {fmtNum(clean.invalid.length)} แถว</strong> — แถวเหล่านี้จะไม่ถูกนำเข้า
+                      ส่วนที่เหลือนำเข้าได้ตามปกติ
+                      <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+                        {invalidReasons.map(([reason, n]) => (
+                          <li key={reason}>
+                            {reason} — {fmtNum(n)} แถว
+                          </li>
+                        ))}
+                      </ul>
                       <details style={{ marginTop: 8 }}>
                         <summary style={{ cursor: 'pointer' }}>ดูรายละเอียด</summary>
                         <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 13 }}>

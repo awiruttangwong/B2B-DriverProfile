@@ -266,6 +266,9 @@ export async function detUuid(kind: string, key: string): Promise<string> {
  */
 export async function rowHash(
   parts: {
+    /** ฝั่งธุรกิจ — B2B ไม่ถูกนำมาคิด (ได้ hash เดิมทุกไบต์ ข้อมูลที่นำเข้าแล้วยังกันซ้ำได้)
+     *  ฝั่งอื่นถูกเติมนำหน้า งานของสองฝั่งที่ข้อมูลเหมือนกันทุกช่องจึงไม่ชนกัน */
+    segment?: string
     date: string | null
     customer: string | null
     plate: string | null
@@ -286,6 +289,7 @@ export async function rowHash(
     parts.cost === null ? '' : String(parts.cost),
   ].join('|')
   if (occurrence > 1) raw += `|#${occurrence}`
+  if (parts.segment && parts.segment !== 'B2B') raw = `${parts.segment}|${raw}`
 
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
