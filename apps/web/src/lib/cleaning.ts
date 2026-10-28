@@ -243,6 +243,25 @@ function isInvalid(x: Draft | InvalidRow): x is InvalidRow {
  * ผลกับไฟล์จริง: จาก 8,010 แถวที่ใช้ได้ เหลือ 7,556 เที่ยว โดยที่ทุกชีตให้
  * จำนวนเที่ยวตรงกันหมด (ไม่มีคีย์ไหนที่ชีตนับไม่ตรงกันเลย)
  */
+/**
+ * ชีตที่ไม่มีคอลัมน์ "ประเภท" บอกฝั่งไม่ได้ทีละแถว — ดูจากหน้าตาคอลัมน์แทน กันอัปโหลดผิดฝั่งทั้งชีต
+ * ฟอร์ม TRANSPORT (B2B) มีราคารับ/ราคาจ่าย/ลำดับงาน; ฟอร์ม EXPRESS มี "ชื่อเส้นทาง" และไม่มีราคา
+ * ชีตที่มีคอลัมน์ "ประเภท" ไม่ผ่านตรงนี้ — ตรวจรายแถวใน toDraft ตามเดิม
+ */
+function wrongLineShape(columns: ColumnMap, line: BusinessLine): string | null {
+  if (columns.segment !== undefined) return null
+  const transportShape =
+    columns.revenue !== undefined || columns.cost !== undefined || columns.seq !== undefined
+  const expressShape = columns.routeCode !== undefined && !transportShape
+  if (line === 'EXPRESS' && transportShape) {
+    return 'ไฟล์เป็นแบบฟอร์มของฝั่ง TRANSPORT (มีคอลัมน์ราคา/ลำดับงาน แต่ไม่มีคอลัมน์ "ประเภท") — ใช้เทมเพลต EXPRESS หรือเพิ่มคอลัมน์ "ประเภท" ใส่ EXPRESS'
+  }
+  if (line === 'B2B' && expressShape) {
+    return 'ไฟล์เป็นแบบฟอร์มของฝั่ง EXPRESS (มีคอลัมน์ "ชื่อเส้นทาง" แต่ไม่มีคอลัมน์ "ประเภท") — ใช้เทมเพลต TRANSPORT หรือเพิ่มคอลัมน์ "ประเภท" ใส่ TRANSPORT'
+  }
+  return null
+}
+
 export async function cleanSheets(
   sheets: SourceSheet[],
   line: BusinessLine,
@@ -251,6 +270,11 @@ export async function cleanSheets(
   const drafts: Draft[] = []
 
   for (const s of sheets) {
+    const wrong = wrongLineShape(s.columns, line)
+    if (wrong) {
+      for (const r of s.rows) invalid.push({ sheet: s.name, rowNo: r.rowNo, reason: wrong })
+      continue
+    }
     for (const r of s.rows) {
       const d = toDraft(s.name, r.rowNo, r.cells, s.columns, line)
       if (isInvalid(d)) invalid.push(d)
